@@ -1,4 +1,4 @@
-#include <stdint.h>
+#include "types.h"
 #include "timer.h"
 
 // This counter increments every time the PIT timer fires
