@@ -63,7 +63,7 @@ if (-not (Test-Path $buildDir)) {
     New-Item -ItemType Directory -Force -Path $buildDir | Out-Null
 }
 
-$asmSrcs = Get-ChildItem -Path $srcDir -Recurse -Filter "*.s"
+$asmSrcs = Get-ChildItem -Path $srcDir -Recurse -Filter "*.asm"
 $cSrcs = Get-ChildItem -Path $srcDir -Recurse -Filter "*.c"
 
 $objPaths = @()

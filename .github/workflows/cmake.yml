@@ -39,16 +39,18 @@ jobs:
           mkdir -p assets
           wget -O assets/smollm2.gguf https://huggingface.co/bartowski/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q4_K_M.gguf
 
-      - name: Configure CMake
-        run: |
-          cmake -B build \
-            -DCMAKE_C_COMPILER=i686-linux-gnu-gcc \
-            -DCMAKE_ASM_NASM_COMPILER=nasm \
-            -DCMAKE_BUILD_TYPE=Release
-
       - name: Build BasicallyLinux
         run: |
-          cmake --build build
+          mkdir -p build
+          cd build
+          # Force the assembler and compiler to 32-bit mode
+          cmake .. -DCMAKE_ASM_NASM_FLAGS="-f elf32" -DCMAKE_C_FLAGS="-m32"
+          make
+
+      - name: Verify Kernel Architecture
+        run: |
+          file build/kernel.bin
+          i686-linux-gnu-objdump -f build/kernel.bin | grep "architecture: i386"
 
       - name: Archive Artifacts
         if: success()

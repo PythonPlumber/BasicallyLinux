@@ -12,13 +12,13 @@ BUILD_DIR := build
 MODEL_BLOB := $(firstword $(wildcard assets/smollm2.gguf) $(wildcard assets/smollm-135m.gguf) $(wildcard assets/SmolLM2-135M-Instruct-Q4_K_M.gguf))
 MODEL_OBJ := $(BUILD_DIR)/model.o
 
-ASM_SRCS := $(shell find $(SRC_DIR) -name "*.s")
+ASM_SRCS := $(shell find $(SRC_DIR) -name "*.asm")
 C_SRCS := $(filter-out $(SRC_DIR)/drivers/vga.c, $(shell find $(SRC_DIR) -name "*.c"))
 
-ASM_OBJS := $(patsubst $(SRC_DIR)/%.s,$(BUILD_DIR)/%.s.o,$(ASM_SRCS))
+ASM_OBJS := $(patsubst $(SRC_DIR)/%.asm,$(BUILD_DIR)/%.asm.o,$(ASM_SRCS))
 C_OBJS := $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.c.o,$(C_SRCS))
 
-BOOT_OBJ := $(BUILD_DIR)/boot.s.o
+BOOT_OBJ := $(BUILD_DIR)/boot.asm.o
 OTHER_OBJS := $(sort $(filter-out $(BOOT_OBJ),$(ASM_OBJS) $(C_OBJS)))
 OBJS := $(BOOT_OBJ) $(OTHER_OBJS)
 
@@ -31,7 +31,7 @@ all: $(BUILD_DIR) kernel.bin
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-$(BUILD_DIR)/%.s.o: $(SRC_DIR)/%.s
+$(BUILD_DIR)/%.asm.o: $(SRC_DIR)/%.asm
 	mkdir -p $(dir $@)
 	$(AS) $(ASFLAGS) $< -o $@
 
