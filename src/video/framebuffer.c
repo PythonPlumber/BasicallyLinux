@@ -1,4 +1,5 @@
 #include "framebuffer.h"
+#include "paging.h"
 #include "vga.h"
 #include "font.h"
 #include "multiboot.h"
@@ -157,6 +158,12 @@ void fb_init(void* multiboot_info) {
             framebuffer.pitch = mode->pitch;
             framebuffer.bpp = mode->bpp;
             framebuffer.type = FB_TYPE_LINEAR;
+
+            // Map the framebuffer memory
+            uint32_t fb_size = framebuffer.height * framebuffer.pitch;
+            for (uint32_t i = 0; i < fb_size; i += 4 * 1024 * 1024) {
+                map_page_4mb((uint32_t)framebuffer.address + i, (uint32_t)framebuffer.address + i, 0x03); // Present | RW
+            }
         }
     }
 }

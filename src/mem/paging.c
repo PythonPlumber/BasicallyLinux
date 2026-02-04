@@ -1,5 +1,6 @@
 #include "paging.h"
 #include "heap.h"
+#include "kernel.h"
 #include "pmm.h"
 #include "types.h"
 #include "util.h"
@@ -112,11 +113,35 @@ void paging_init(void) {
         page_directory[i] = PAGE_RW;
     }
 
-    uint32_t* first_table = alloc_table();
-    for (uint32_t i = 0; i < 1024; ++i) {
-        first_table[i] = (i * 0x1000) | PAGE_PRESENT | PAGE_RW;
+    for (uint32_t t = 0; t < 4; ++t) {
+        uint32_t* table = alloc_table();
+        for (uint32_t i = 0; i < 1024; ++i) {
+            table[i] = (t * 0x400000 + i * 0x1000) | PAGE_PRESENT | PAGE_RW;
+        }
+        page_directory[t] = ((uint32_t)table) | PAGE_PRESENT | PAGE_RW;
     }
-    page_directory[0] = ((uint32_t)first_table) | PAGE_PRESENT | PAGE_RW;
+
+    // Identity map LAPIC and IOAPIC regions (0xFE000000 - 0xFFFFFFFF)
+    // We use 4MB pages for simplicity since PSE is enabled
+    map_page_4mb(0xFEC00000, 0xFEC00000, PAGE_PRESENT | PAGE_RW);
+    map_page_4mb(0xFF000000, 0xFF000000, PAGE_PRESENT | PAGE_RW);
+
+    // Identity map ACPI tables
+    uint32_t rsdt = acpi_rsdt_addr();
+    if (rsdt) {
+        for (uint32_t i = 0; i < 4; i++) {
+            map_page(rsdt + i * 4096, rsdt + i * 4096, PAGE_PRESENT | PAGE_RW);
+        }
+        uint32_t count = acpi_rsdt_entries();
+        for (uint32_t i = 0; i < count; i++) {
+            uint32_t entry = acpi_rsdt_entry(i);
+            if (entry) {
+                for (uint32_t j = 0; j < 4; j++) {
+                    map_page(entry + j * 4096, entry + j * 4096, PAGE_PRESENT | PAGE_RW);
+                }
+            }
+        }
+    }
 
     load_cr3(page_directory);
     enable_pse();

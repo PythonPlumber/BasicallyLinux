@@ -63,15 +63,6 @@ static void vga_write_hex32(uint32_t value, uint8_t color) {
     }
 }
 
-static void vga_write_hex64(uint64_t value, uint8_t color) {
-    static const char hex[] = "0123456789ABCDEF";
-    vga_write_string("0x", color);
-    for (int i = 15; i >= 0; --i) {
-        uint8_t nibble = (uint8_t)((value >> (i * 4)) & 0xF);
-        vga_put_char((uint8_t)hex[nibble], color);
-    }
-}
-
 static void vga_write_label_hex(const char* label, uint32_t value, uint8_t color) {
     vga_write_string(label, color);
     vga_write_hex32(value, color);
@@ -202,11 +193,14 @@ static registers_t* irq0_handler(registers_t* regs) {
     if (!previous || !next || next == previous) {
         return regs;
     }
+
+    previous->esp = (uint32_t)regs;
+
     if (next->page_directory) {
         load_cr3(next->page_directory);
     }
-    context_switch(previous, next, regs);
-    return regs;
+    
+    return (registers_t*)next->esp;
 }
 
 void register_interrupt_handler(uint8_t n, isr_t handler) {
@@ -231,10 +225,11 @@ registers_t* isr_handler(registers_t* regs) {
 }
 
 registers_t* irq_handler(registers_t* regs) {
-    if (interrupt_handlers[regs->int_no]) {
-        regs = interrupt_handlers[regs->int_no](regs);
+    uint32_t int_no = regs->int_no;
+    if (interrupt_handlers[int_no]) {
+        regs = interrupt_handlers[int_no](regs);
     }
-    if (regs->int_no >= 40) {
+    if (int_no >= 40) {
         outb(0xA0, 0x20);
     }
     outb(0x20, 0x20);

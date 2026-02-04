@@ -388,8 +388,8 @@ void kernel_main(unsigned int multiboot_magic, unsigned int multiboot_info_addr)
         }
     }
 
-    paging_init();
     acpi_scan();
+    paging_init();
     apex_intc_init();
     msgi_init();
     smp_rally_init();

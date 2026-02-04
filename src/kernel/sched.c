@@ -305,16 +305,8 @@ static process_t* process_create_ex(void (*entry)(void), uint32_t* page_director
     list_append(proc);
     
     if (start_immediately) {
-        process_t* current = scheduler_current();
-        if (!current) {
-            uint32_t cpu = get_cpu_id();
-            current_process[cpu] = proc;
-            proc->current_cpu = cpu;
-            proc->state = PROCESS_RUNNING;
-        } else {
-            proc->state = PROCESS_READY;
-            enqueue_task(proc);
-        }
+        proc->state = PROCESS_READY;
+        enqueue_task(proc);
     }
     
     spin_unlock(&sched_lock);
@@ -646,7 +638,23 @@ process_t* switch_task(registers_t* saved_stack, process_t** previous) {
     scheduler_wake_sleepers(now);
     scheduler_account_tick();
 
-    if (!current || !process_list) {
+    if (!current) {
+        process_t* best = scheduler_pick_best_ready();
+        if (best) {
+            dequeue_task(best);
+            current_process[cpu] = best;
+            best->state = PROCESS_RUNNING;
+            best->time_remaining = best->time_slice;
+            if (previous) *previous = 0;
+            spin_unlock(&sched_lock);
+            return best;
+        }
+        if (previous) *previous = 0;
+        spin_unlock(&sched_lock);
+        return 0;
+    }
+
+    if (!process_list) {
         if (previous) *previous = current;
         spin_unlock(&sched_lock);
         return current;
