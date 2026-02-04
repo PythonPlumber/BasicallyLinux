@@ -1,6 +1,13 @@
 #include "secure_caps.h"
 #include "types.h"
 
+typedef struct process process_t;
+
+typedef struct wait_queue {
+    process_t* head;
+    process_t* tail;
+} wait_queue_t;
+
 typedef struct fs_node fs_node_t;
 
 typedef struct {
@@ -56,6 +63,7 @@ typedef struct process {
     uint32_t time_remaining;
     uint32_t sched_class;
     uint32_t cpu_mask;
+    uint32_t current_cpu;
     uint32_t cgroup_id;
     uint32_t cgroup_share;
     uint64_t rt_budget;
@@ -87,9 +95,12 @@ typedef struct process {
     uint32_t ns_user;
     uint32_t container_id;
     uint32_t vm_id;
+    void* kernel_stack;
     file_desc_t fds[PROCESS_MAX_FDS];
     uint32_t region_count;
     vm_region_t regions[PROCESS_MAX_REGIONS];
     struct process* next;
     struct process* wait_next;
+    struct process* run_next;
+    wait_queue_t wait_queue;
 } process_t;

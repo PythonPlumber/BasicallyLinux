@@ -20,15 +20,11 @@ void scheduler_sleep(uint64_t ticks);
 int scheduler_wake(uint32_t pid);
 void scheduler_yield(void);
 void scheduler_balance_load(void);
-process_t* process_fork(process_t* parent);
-int process_exec(process_t* proc, void (*entry)(void));
+process_t* process_fork(process_t* parent, registers_t* regs);
+registers_t* process_exec(process_t* proc, void (*entry)(void));
+registers_t* process_exec_elf(process_t* proc, const uint8_t* elf_data, uint32_t size);
 void process_exit(process_t* proc, uint32_t code);
 int process_wait(uint32_t pid, uint32_t* exit_code);
-
-typedef struct wait_queue {
-    process_t* head;
-    process_t* tail;
-} wait_queue_t;
 
 void wait_queue_init(wait_queue_t* queue);
 void wait_queue_wait(wait_queue_t* queue);

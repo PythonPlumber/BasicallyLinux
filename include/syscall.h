@@ -34,7 +34,8 @@ enum {
     SYS_TRACE_GET = 30,
     SYS_AUDIT_GET = 31,
     SYS_POLICY_ADD = 32,
-    SYS_MAX = 33
+    SYS_EXEC_ELF = 33,
+    SYS_MAX = 34
 };
 
 #define OS_OK 0u

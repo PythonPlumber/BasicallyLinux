@@ -1,3 +1,6 @@
+#ifndef FIXEDPOINT_H
+#define FIXEDPOINT_H
+
 #include "types.h"
 
 typedef int32_t q16_16_t;
@@ -22,3 +25,5 @@ static inline q16_16_t q16_add(q16_16_t a, q16_16_t b) {
 static inline q16_16_t q16_sub(q16_16_t a, q16_16_t b) {
     return a - b;
 }
+
+#endif

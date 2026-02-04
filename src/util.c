@@ -37,3 +37,13 @@ int memcmp(const void* a, const void* b, unsigned int n) {
     }
     return 0;
 }
+
+void spin_lock(spinlock_t* lock) {
+    while (__sync_lock_test_and_set(lock, 1)) {
+        asm volatile("pause");
+    }
+}
+
+void spin_unlock(spinlock_t* lock) {
+    __sync_lock_release(lock);
+}

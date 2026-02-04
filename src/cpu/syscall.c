@@ -205,7 +205,7 @@ static registers_t* sys_fork(registers_t* regs) {
         regs->eax = OS_ERR;
         return regs;
     }
-    process_t* child = process_fork(current);
+    process_t* child = process_fork(current, regs);
     regs->eax = child ? child->pid : OS_ERR;
     return regs;
 }
@@ -213,7 +213,46 @@ static registers_t* sys_fork(registers_t* regs) {
 static registers_t* sys_exec(registers_t* regs) {
     process_t* current = scheduler_current();
     void (*entry)(void) = (void (*)(void))regs->ebx;
-    regs->eax = process_exec(current, entry) ? OS_OK : OS_ERR;
+    registers_t* new_stack = process_exec(current, entry);
+    if (new_stack) {
+        return new_stack;
+    }
+    regs->eax = OS_ERR;
+    return regs;
+}
+
+static registers_t* sys_exec_elf(registers_t* regs) {
+    process_t* current = scheduler_current();
+    const uint8_t* user_elf = (const uint8_t*)regs->ebx;
+    uint32_t size = regs->ecx;
+    
+    if (!current || !user_elf || size == 0) {
+        regs->eax = OS_ERR;
+        return regs;
+    }
+    
+    if (size > 16 * 1024 * 1024) {
+        regs->eax = OS_ERR;
+        return regs;
+    }
+    
+    uint8_t* kernel_elf = (uint8_t*)kmalloc(size);
+    if (!kernel_elf) {
+        regs->eax = OS_ERR;
+        return regs;
+    }
+    
+    memcpy(kernel_elf, user_elf, size);
+    
+    registers_t* new_stack = process_exec_elf(current, kernel_elf, size);
+    
+    kfree(kernel_elf);
+    
+    if (new_stack) {
+        return new_stack;
+    }
+    
+    regs->eax = OS_ERR;
     return regs;
 }
 
@@ -423,7 +462,8 @@ static syscall_fn_t syscall_table[SYS_MAX] = {
     sys_trace_emit,
     sys_trace_get,
     sys_audit_get,
-    sys_policy_add
+    sys_policy_add,
+    sys_exec_elf
 };
 
 static registers_t* syscall_handler(registers_t* regs) {
