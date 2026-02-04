@@ -1,0 +1,85 @@
+name: BasicallyLinux ISO Build Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    name: Build Bootable ISO
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Toolchain & ISO Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            nasm \
+            make \
+            cmake \
+            binutils-i686-linux-gnu \
+            gcc-i686-linux-gnu \
+            libgcc-s1-i386-cross \
+            wget \
+            grub-pc-bin \
+            xorriso \
+            mtools
+
+      - name: Cache AI Model
+        id: cache-model
+        uses: actions/cache@v4
+        with:
+          path: assets/smollm2.gguf
+          key: ${{ runner.os }}-model-smollm2
+
+      - name: Download AI Model Asset
+        if: steps.cache-model.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p assets
+          wget -O assets/smollm2.gguf https://huggingface.co/bartowski/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q4_K_M.gguf
+
+      - name: Build BasicallyLinux Kernel
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. \
+            -DCMAKE_C_COMPILER=i686-linux-gnu-gcc \
+            -DCMAKE_ASM_NASM_COMPILER=nasm \
+            -DCMAKE_ASM_NASM_FLAGS="-f elf32" \
+            -DCMAKE_C_FLAGS="-m32" \
+            -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY
+          make
+
+      - name: Create ISO Structure
+        run: |
+          mkdir -p isodir/boot/grub
+          cp build/kernel.bin isodir/boot/kernel.bin
+          # Optional: Put the AI model inside the ISO as a multiboot module
+          cp assets/smollm2.gguf isodir/boot/smollm2.gguf
+          
+          # Generate GRUB configuration
+          cat << 'EOF' > isodir/boot/grub/grub.cfg
+          set timeout=0
+          set default=0
+          menuentry "BasicallyLinux" {
+              multiboot /boot/kernel.bin
+              module /boot/smollm2.gguf "ai_model"
+              boot
+          }
+          EOF
+
+      - name: Generate Bootable ISO
+        run: |
+          grub-mkrescue -o basicallylinux.iso isodir
+
+      - name: Archive ISO Artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: basicallylinux-bootable-iso
+          path: basicallylinux.iso
