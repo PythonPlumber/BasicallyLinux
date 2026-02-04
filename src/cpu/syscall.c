@@ -13,6 +13,7 @@
 #include "types.h"
 #include "util.h"
 #include "vfs.h"
+#include "heap.h"
 
 #define SYS_COPY_LIMIT 4096u
 

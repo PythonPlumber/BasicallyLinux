@@ -10,6 +10,7 @@
 #include "timer.h"
 #include "types.h"
 #include "util.h"
+#include "vga.h"
 #include "smp_rally.h"
 #include "sched.h"
 

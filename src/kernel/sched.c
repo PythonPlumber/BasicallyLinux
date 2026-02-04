@@ -669,6 +669,9 @@ process_t* switch_task(registers_t* saved_stack, process_t** previous) {
     current->eip = saved_stack->eip;
     current->cs = saved_stack->cs;
     current->ds = saved_stack->ds;
+    current->es = saved_stack->es;
+    current->fs = saved_stack->fs;
+    current->gs = saved_stack->gs;
     current->ss = saved_stack->ss;
 
     if (current->state == PROCESS_RUNNING) {

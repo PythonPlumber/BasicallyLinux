@@ -84,6 +84,13 @@ isr_common_stub:
     pusha
     mov ax, ds
     push eax
+    mov ax, es
+    push eax
+    mov ax, fs
+    push eax
+    mov ax, gs
+    push eax
+
     mov ax, 0x10
     mov ds, ax
     mov es, ax
@@ -93,11 +100,16 @@ isr_common_stub:
     call isr_handler
     add esp, 4
     mov esp, eax
+
+    pop eax
+    mov gs, ax
+    pop eax
+    mov fs, ax
+    pop eax
+    mov es, ax
     pop eax
     mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
+
     popa
     add esp, 8
     sti
@@ -107,6 +119,13 @@ irq_common_stub:
     pusha
     mov ax, ds
     push eax
+    mov ax, es
+    push eax
+    mov ax, fs
+    push eax
+    mov ax, gs
+    push eax
+
     mov ax, 0x10
     mov ds, ax
     mov es, ax
@@ -116,11 +135,16 @@ irq_common_stub:
     call irq_handler
     add esp, 4
     mov esp, eax
+
+    pop eax
+    mov gs, ax
+    pop eax
+    mov fs, ax
+    pop eax
+    mov es, ax
     pop eax
     mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
+
     popa
     add esp, 8
     sti
