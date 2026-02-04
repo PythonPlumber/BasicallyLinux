@@ -7,11 +7,34 @@ static uint16_t* const vga_buffer = (uint16_t*)0xB8000;
 static const uint8_t vga_width = 80;
 static const uint8_t vga_height = 25;
 
+static uint8_t vga_cursor_x = 0;
+static uint8_t vga_cursor_y = 0;
+static uint8_t vga_current_color = 0x07;
+
+void vga_set_color(uint8_t color) {
+    vga_current_color = color;
+}
+
+uint8_t vga_get_x(void) {
+    return vga_cursor_x;
+}
+
+uint8_t vga_get_y(void) {
+    return vga_cursor_y;
+}
+
+void vga_set_cursor(uint8_t x, uint8_t y) {
+    if (x < vga_width) vga_cursor_x = x;
+    if (y < vga_height) vga_cursor_y = y;
+}
+
 void vga_clear(uint8_t color) {
     uint16_t blank = (uint16_t)' ' | ((uint16_t)color << 8);
     for (uint32_t i = 0; i < (uint32_t)vga_width * vga_height; ++i) {
         vga_buffer[i] = blank;
     }
+    vga_cursor_x = 0;
+    vga_cursor_y = 0;
 }
 
 static void vga_put_at(char ch, uint8_t color, uint8_t x, uint8_t y) {
@@ -20,6 +43,36 @@ static void vga_put_at(char ch, uint8_t color, uint8_t x, uint8_t y) {
     }
     uint32_t idx = (uint32_t)y * vga_width + x;
     vga_buffer[idx] = (uint16_t)ch | ((uint16_t)color << 8);
+}
+
+void vga_putc(char ch) {
+    if (ch == '\n') {
+        vga_cursor_x = 0;
+        vga_cursor_y++;
+    } else if (ch == '\r') {
+        vga_cursor_x = 0;
+    } else {
+        vga_put_at(ch, vga_current_color, vga_cursor_x, vga_cursor_y);
+        vga_cursor_x++;
+    }
+
+    if (vga_cursor_x >= vga_width) {
+        vga_cursor_x = 0;
+        vga_cursor_y++;
+    }
+
+    if (vga_cursor_y >= vga_height) {
+        // Simple scroll: just reset to top or stay at bottom?
+        // For now, let's just stay at bottom and clear or similar.
+        // Real scrolling would involve memmove.
+        vga_cursor_y = vga_height - 1;
+    }
+}
+
+void vga_puts(const char* text) {
+    for (uint32_t i = 0; text[i] != 0; ++i) {
+        vga_putc(text[i]);
+    }
 }
 
 static void vga_write_at(const char* text, uint8_t color, uint8_t x, uint8_t y) {

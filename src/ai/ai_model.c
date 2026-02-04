@@ -95,6 +95,7 @@ static void ai_worker_loop(void* arg) {
 void ai_scheduler_init(uint32_t n_workers) {
     ai_scheduler_running = 1;
     ai_worker_count = n_workers;
+    vga_set_color(0x0A);
     diag_log(DIAG_INFO, "AI Neural Scheduler: Initializing workers...");
     
     // In a real implementation, we would spawn kernel threads here
@@ -106,12 +107,6 @@ void ai_scheduler_init(uint32_t n_workers) {
 
 // Moved matmul_worker to after ai_dot_q16_simd
 
-static uint16_t* const vga_buffer = (uint16_t*)0xB8000;
-static const uint8_t vga_width = 80;
-static const uint8_t vga_height = 25;
-static uint8_t vga_x = 0;
-static uint8_t vga_y = 0;
-static uint8_t vga_color = 0x0A;
 static char token_history[10];
 static uint32_t token_count = 0;
 static uint32_t token_head = 0;
@@ -120,21 +115,7 @@ static q16_16_t ai_temp = 1 << 16;
 static uint32_t kv_cache_tokens = 0;
 
 static void vga_put(char ch) {
-    if (ch == '\n') {
-        vga_x = 0;
-        vga_y++;
-    } else {
-        uint32_t idx = (uint32_t)vga_y * vga_width + vga_x;
-        vga_buffer[idx] = (uint16_t)ch | ((uint16_t)vga_color << 8);
-        vga_x++;
-    }
-    if (vga_x >= vga_width) {
-        vga_x = 0;
-        vga_y++;
-    }
-    if (vga_y >= vga_height) {
-        vga_y = vga_height - 1;
-    }
+    vga_putc(ch);
 }
 
 void ai_stream_putc(char ch) {
