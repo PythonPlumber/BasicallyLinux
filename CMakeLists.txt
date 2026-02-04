@@ -8,20 +8,20 @@ enable_language(ASM_NASM)
 set(CMAKE_C_COMPILER i686-linux-gnu-gcc)
 set(CMAKE_ASM_NASM_COMPILER nasm)
 
-# Compilation flags
+# Compilation flags for C files only
 add_compile_options(
-    -ffreestanding
-    -O2
-    -Wall
-    -Wextra
-    -m32
-    -fno-pie
-    -fno-PIC
-    -fno-stack-protector
-    -nostdlib
-    -nostdinc
-    -msse
-    -msse2
+    $<$<COMPILE_LANGUAGE:C>:-ffreestanding>
+    $<$<COMPILE_LANGUAGE:C>:-O2>
+    $<$<COMPILE_LANGUAGE:C>:-Wall>
+    $<$<COMPILE_LANGUAGE:C>:-Wextra>
+    $<$<COMPILE_LANGUAGE:C>:-m32>
+    $<$<COMPILE_LANGUAGE:C>:-fno-pie>
+    $<$<COMPILE_LANGUAGE:C>:-fno-PIC>
+    $<$<COMPILE_LANGUAGE:C>:-fno-stack-protector>
+    $<$<COMPILE_LANGUAGE:C>:-nostdlib>
+    $<$<COMPILE_LANGUAGE:C>:-nostdinc>
+    $<$<COMPILE_LANGUAGE:C>:-msse>
+    $<$<COMPILE_LANGUAGE:C>:-msse2>
 )
 
 include_directories(include)
