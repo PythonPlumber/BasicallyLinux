@@ -1,3 +1,6 @@
+#ifndef VGA_H
+#define VGA_H
+
 #include "types.h"
 
 void vga_display_splash(void);
@@ -15,3 +18,6 @@ void backspace_handler(void);
 uint8_t vga_get_x(void);
 uint8_t vga_get_y(void);
 void update_vga_buffer(void);
+
+#endif
+

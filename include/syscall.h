@@ -1,3 +1,6 @@
+#ifndef SYSCALL_H
+#define SYSCALL_H
+
 #include "idt.h"
 
 enum {
@@ -42,3 +45,6 @@ enum {
 #define OS_ERR 0xFFFFFFFFu
 
 void syscall_init(void);
+
+#endif
+

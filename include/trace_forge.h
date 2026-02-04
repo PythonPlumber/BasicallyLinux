@@ -1,3 +1,6 @@
+#ifndef TRACE_FORGE_H
+#define TRACE_FORGE_H
+
 #include "types.h"
 
 typedef struct {
@@ -15,3 +18,6 @@ void trace_forge_init(void);
 void trace_forge_emit(uint32_t tag, uint32_t value);
 trace_forge_state_t trace_forge_state(void);
 uint32_t trace_forge_get(uint32_t index, trace_event_t* out);
+
+#endif
+

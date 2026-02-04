@@ -1,3 +1,6 @@
+#ifndef TASK_H
+#define TASK_H
+
 #include "types.h"
 #include "idt.h"
 
@@ -17,3 +20,6 @@ registers_t* scheduler(registers_t* regs);
 int task_create(void (*entry)(void));
 void switch_to(task_t* next);
 extern task_t* current_task_ptr;
+
+#endif
+
