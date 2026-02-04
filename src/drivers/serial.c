@@ -34,6 +34,10 @@ void serial_write(const char* text) {
     }
 }
 
+void serial_write_string(const char* text) {
+    serial_write(text);
+}
+
 void serial_write_len(const char* text, uint32_t len) {
     for (uint32_t i = 0; i < len; ++i) {
         if (text[i] == '\n') {

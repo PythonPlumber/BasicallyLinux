@@ -62,7 +62,7 @@ list(REMOVE_ITEM ASM_SOURCES "${BOOT_ASM}")
 set(ASM_SOURCES "${BOOT_ASM}" ${ASM_SOURCES})
 
 # Exclude specific files if needed
-list(FILTER C_SOURCES EXCLUDE REGEX "src/drivers/vga.c")
+# list(FILTER C_SOURCES EXCLUDE REGEX "src/drivers/vga.c")
 
 # Build Kernel Binary
 set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker.ld")
