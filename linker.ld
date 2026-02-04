@@ -11,6 +11,7 @@ SECTIONS
 {
     /* The kernel starts at 1MB */
     . = 1M;
+    kernel_start = .;
 
     .multiboot : AT(ADDR(.multiboot))
     {

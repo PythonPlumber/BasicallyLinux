@@ -62,6 +62,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: basicallylinux-alpha
-          path: |
-            build/kernel.bin
-            assets/smollm2.gguf
+          path: build/kernel.bin
