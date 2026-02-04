@@ -1,7 +1,7 @@
+#include "types.h"
 #include "keyboard.h"
 #include "idt.h"
 #include "ports.h"
-#include "types.h"
 
 #define KEYBOARD_BUFFER_SIZE 128
 

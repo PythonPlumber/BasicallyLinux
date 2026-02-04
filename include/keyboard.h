@@ -1,6 +1,8 @@
 #ifndef KEYBOARD_H
 #define KEYBOARD_H
 
+#include "types.h"
+
 typedef void (*keyboard_callback_t)(void);
 
 #define KEY_ARROW_UP 0x80
