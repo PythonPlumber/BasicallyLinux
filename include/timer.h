@@ -5,6 +5,8 @@
 
 void pit_init(uint32_t frequency);
 uint64_t timer_get_ticks(void);
+void timer_handler(void);
+void timer_init(void);
 
 #endif
 

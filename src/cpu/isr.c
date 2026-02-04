@@ -8,8 +8,9 @@
 #include "serial.h"
 #include "types.h"
 
+#include "timer.h"
+
 static isr_t interrupt_handlers[256];
-static volatile uint64_t timer_ticks = 0;
 static volatile uint32_t interrupt_depth = 0;
 
 static uint16_t* const vga_buffer = (uint16_t*)0xB8000;
@@ -194,7 +195,7 @@ static registers_t* exception_handler(registers_t* regs) {
 }
 
 static registers_t* irq0_handler(registers_t* regs) {
-    timer_ticks++;
+    timer_handler();
     kswapd_tick();
     process_t* previous = 0;
     process_t* next = switch_task(regs, &previous);
@@ -238,8 +239,4 @@ registers_t* irq_handler(registers_t* regs) {
     }
     outb(0x20, 0x20);
     return regs;
-}
-
-uint64_t timer_get_ticks(void) {
-    return timer_ticks;
 }
