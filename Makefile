@@ -5,7 +5,7 @@ OBJCOPY := i686-linux-gnu-objcopy
 
 CFLAGS := -ffreestanding -O2 -Wall -Wextra -m32 -fno-pie -fno-stack-protector -nostdlib -nostdinc -Iinclude -msse -msse2
 ASFLAGS := -f elf32
-LDFLAGS := -T linker.ld -o kernel.bin -nostdlib -lgcc -m32
+LDFLAGS := -T linker.ld -nostdlib -m32
 
 SRC_DIR := src
 BUILD_DIR := build
@@ -40,7 +40,7 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 kernel.bin: $(OBJS) linker.ld
-	$(LD) $(LDFLAGS) $(OBJS)
+	$(LD) $(LDFLAGS) $(OBJS) -lgcc
 
 $(MODEL_OBJ): $(MODEL_BLOB)
 	mkdir -p $(dir $@)

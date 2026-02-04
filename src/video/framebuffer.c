@@ -489,6 +489,56 @@ void vga_hide_cursor(void) {
     outb(0x3D5, 0x20);
 }
 
+void vga_display_splash(void) {
+    static const char* logo[] = {
+        " ____              _          _      _ _          _            ",
+        "| __ )  __ _ ___  (_) ___  __| | ___| (_)_ __ ___| |_ ___ _ __ ",
+        "|  _ \\ / _` / __| | |/ _ \\/ _` |/ _ \\ | | '__/ __| __/ _ \\ '__|",
+        "| |_) | (_| \\__ \\ | |  __/ (_| |  __/ | | |  \\__ \\ ||  __/ |   ",
+        "|____/ \\__,_|___/ |_|\\___|\\__,_|\\___|_|_|_|  |___/\\__\\___|_|   ",
+        "                     BasicallyLinux                             "
+    };
+    static const char* disclaimer = "(It's definitely not)";
+    static const char* messages[] = {
+        "Initializing GDT...",
+        "Loading IDT...",
+        "Enabling Paging...",
+        "Initializing Heap...",
+        "Starting Scheduler...",
+        "Bringing up Devices...",
+        "Launching Shell..."
+    };
+
+    fb_clear(0);
+    fb_console_init(0x00FF00, 0); // Green logo
+    for (uint32_t i = 0; i < sizeof(logo) / sizeof(logo[0]); ++i) {
+        fb_console_write(logo[i]);
+        fb_console_write("\n");
+    }
+    fb_console_init(0xFF0000, 0); // Red disclaimer
+    fb_console_write(disclaimer);
+    fb_console_write("\n\n");
+    
+    fb_console_init(0xFFFFFF, 0); // White messages
+    for (uint32_t i = 0; i < sizeof(messages) / sizeof(messages[0]); ++i) {
+        const char* msg = messages[i];
+        for (uint32_t c = 0; msg[c] != 0; ++c) {
+            char buf[2] = {msg[c], 0};
+            fb_console_write(buf);
+            // Simple wait loop since we don't have a reliable wait_ticks here
+            for (volatile int j = 0; j < 1000000; j++);
+        }
+        fb_console_write("\n");
+    }
+    
+    fb_console_write("\n");
+    fb_console_init(0x00FFFF, 0); // Cyan build info
+    fb_console_write("Build Info: v0.0.1 | i686-linux-gnu\n");
+    
+    for (volatile int j = 0; j < 50000000; j++);
+    fb_clear(0);
+}
+
 void vga_print_art(void) {
     vga_display_splash();
 }

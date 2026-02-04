@@ -2,6 +2,8 @@
 
 extern isr_handler
 extern irq_handler
+global isr_handler
+global irq_handler
 
 %macro ISR_NOERR 1
 global isr%1
