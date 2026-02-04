@@ -12,8 +12,8 @@ BUILD_DIR := build
 MODEL_BLOB := $(firstword $(wildcard assets/smollm-135m.gguf) $(wildcard assets/SmolLM2-135M-Instruct-Q4_K_M.gguf))
 MODEL_OBJ := $(BUILD_DIR)/model.o
 
-ASM_SRCS := $(wildcard $(SRC_DIR)/*.s $(SRC_DIR)/*/*.s $(SRC_DIR)/*/*/*.s)
-C_SRCS := $(filter-out $(SRC_DIR)/drivers/vga.c, $(wildcard $(SRC_DIR)/*.c $(SRC_DIR)/*/*.c $(SRC_DIR)/*/*/*.c))
+ASM_SRCS := $(shell find $(SRC_DIR) -name "*.s")
+C_SRCS := $(filter-out $(SRC_DIR)/drivers/vga.c, $(shell find $(SRC_DIR) -name "*.c"))
 
 ASM_OBJS := $(patsubst $(SRC_DIR)/%.s,$(BUILD_DIR)/%.o,$(ASM_SRCS))
 C_OBJS := $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(C_SRCS))
