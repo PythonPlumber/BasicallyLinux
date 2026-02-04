@@ -26,9 +26,21 @@ uint8_t vga_get_y(void) {
 void vga_set_cursor(uint8_t x, uint8_t y) {
     if (x < vga_width) vga_cursor_x = x;
     if (y < vga_height) vga_cursor_y = y;
+    
+    uint16_t pos = y * vga_width + x;
+    outb(0x3D4, 0x0F);
+    outb(0x3D5, (uint8_t)(pos & 0xFF));
+    outb(0x3D4, 0x0E);
+    outb(0x3D5, (uint8_t)((pos >> 8) & 0xFF));
+}
+
+void vga_hide_cursor(void) {
+    outb(0x3D4, 0x0A);
+    outb(0x3D5, 0x20);
 }
 
 void vga_clear(uint8_t color) {
+    vga_hide_cursor();
     uint16_t blank = (uint16_t)' ' | ((uint16_t)color << 8);
     for (uint32_t i = 0; i < (uint32_t)vga_width * vga_height; ++i) {
         vga_buffer[i] = blank;

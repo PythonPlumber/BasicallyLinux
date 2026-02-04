@@ -352,14 +352,26 @@ static void task_b(void) {
 }
 
 void kernel_main(unsigned int multiboot_magic, unsigned int multiboot_info_addr) {
-    gdt_init();
-    idt_init();
-    isr_init();
-    syscall_init();
     serial_init();
+    serial_write_string("\n\n--- KERNEL STARTING ---\n");
+    
+    // Display splash as early as possible
+    vga_display_splash();
+
+    serial_write_string("DEBUG: Multiboot Magic: 0x");
+    serial_write_hex32(multiboot_magic);
+    serial_write_string("\n");
+
+    gdt_init();
+    serial_write_string("DEBUG: GDT Initialized\n");
+    idt_init();
+    serial_write_string("DEBUG: IDT Initialized\n");
+    isr_init();
+    serial_write_string("DEBUG: ISR Initialized\n");
+    syscall_init();
+    serial_write_string("DEBUG: Syscall Initialized\n");
     diag_init();
     diag_log(DIAG_INFO, "boot start");
-    serial_write_string("DEBUG: GDT/IDT/ISR Initialized\n");
 
     multiboot_info_t* info = 0;
     uint32_t mem_bytes = 16u * 1024u * 1024u;
@@ -400,29 +412,38 @@ void kernel_main(unsigned int multiboot_magic, unsigned int multiboot_info_addr)
     paging_init();
     serial_write_string("DEBUG: Paging Initialized\n");
 
+    serial_write_string("DEBUG: Initializing Interrupt Controller...\n");
     apex_intc_init();
+    serial_write_string("DEBUG: Initializing MSGI...\n");
     msgi_init();
+    serial_write_string("DEBUG: Initializing SMP...\n");
     smp_rally_init();
     serial_write_string("DEBUG: SMP/Interrupt Controller Initialized\n");
 
+    serial_write_string("DEBUG: Initializing Power Subsystems...\n");
     power_plane_init();
     acpi_power_init();
+    serial_write_string("DEBUG: Initializing Security...\n");
     secure_hard_init();
     secure_policy_init();
     secure_caps_init();
     secure_audit_init();
+    serial_write_string("DEBUG: Initializing Trace/USB/PCIe/GFX...\n");
     trace_forge_init();
     usb_nexus_init();
     pcie_portshift_init();
     gfx_forge_init();
+    serial_write_string("DEBUG: Initializing Input/DriverGrid/Net/Loader...\n");
     input_stream_init();
     driver_grid_init();
     net_stack_init();
     dyn_loader_init();
     init_orch_init();
+    serial_write_string("DEBUG: Initializing TTY/PTY/Devnodes...\n");
     tty_core_init();
     pty_mux_init();
     devnodes_init();
+    serial_write_string("DEBUG: Initializing View/Config...\n");
     proc_view_init();
     sys_view_init();
     sys_config_init();
@@ -475,10 +496,8 @@ void kernel_main(unsigned int multiboot_magic, unsigned int multiboot_info_addr)
     process_create(task_a, 0);
     process_create(task_b, 0);
     pit_init(100);
-    serial_write_string("DEBUG: Scheduler/PIT Initialized. Displaying splash...\n");
+    serial_write_string("DEBUG: Scheduler/PIT Initialized.\n");
     
-    vga_display_splash();
-
     fb_clear(0);
     fb_console_init(0xFFFFFF, 0);
     keyboard_init();

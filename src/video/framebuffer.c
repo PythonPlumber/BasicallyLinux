@@ -243,6 +243,12 @@ void fb_clear(uint32_t color) {
         scrollback_reset();
         text_x = 0;
         text_y = 0;
+        
+        // Actually clear the hardware buffer
+        uint16_t blank = text_entry(' ', (uint8_t)color);
+        for (uint32_t i = 0; i < TEXT_COLS * TEXT_ROWS; ++i) {
+            text_buffer[i] = blank;
+        }
         return;
     }
     for (uint32_t y = 0; y < framebuffer.height; ++y) {

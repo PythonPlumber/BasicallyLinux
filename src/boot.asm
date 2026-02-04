@@ -14,6 +14,7 @@ _start:
     ; Setup stack and call kernel_main
     mov esp, stack_top
     push ebx                  ; Pointer to Multiboot info
+    push eax                  ; Multiboot magic number
     call kernel_main
     cli
 .hang: hlt
