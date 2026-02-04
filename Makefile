@@ -1,11 +1,11 @@
-CC := i686-elf-gcc
+CC := i686-linux-gnu-gcc
 AS := nasm
-LD := i686-elf-ld
-OBJCOPY := i686-elf-objcopy
+LD := i686-linux-gnu-gcc
+OBJCOPY := i686-linux-gnu-objcopy
 
 CFLAGS := -ffreestanding -O2 -Wall -Wextra -m32 -fno-pie -fno-stack-protector -nostdlib -nostdinc -Iinclude -msse -msse2
 ASFLAGS := -f elf32
-LDFLAGS := -T linker.ld --build-id=none -m elf_i386
+LDFLAGS := -T linker.ld -o kernel.bin -nostdlib -lgcc -m32
 
 SRC_DIR := src
 BUILD_DIR := build
@@ -13,7 +13,7 @@ MODEL_BLOB := $(firstword $(wildcard assets/smollm-135m.gguf) $(wildcard assets/
 MODEL_OBJ := $(BUILD_DIR)/model.o
 
 ASM_SRCS := $(wildcard $(SRC_DIR)/*.s $(SRC_DIR)/*/*.s $(SRC_DIR)/*/*/*.s)
-C_SRCS := $(wildcard $(SRC_DIR)/*.c $(SRC_DIR)/*/*.c $(SRC_DIR)/*/*/*.c)
+C_SRCS := $(filter-out $(SRC_DIR)/drivers/vga.c, $(wildcard $(SRC_DIR)/*.c $(SRC_DIR)/*/*.c $(SRC_DIR)/*/*/*.c))
 
 ASM_OBJS := $(patsubst $(SRC_DIR)/%.s,$(BUILD_DIR)/%.o,$(ASM_SRCS))
 C_OBJS := $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(C_SRCS))
@@ -40,7 +40,7 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 kernel.bin: $(OBJS) linker.ld
-	$(LD) $(LDFLAGS) -o $@ $(OBJS)
+	$(LD) $(LDFLAGS) $(OBJS)
 
 $(MODEL_OBJ): $(MODEL_BLOB)
 	mkdir -p $(dir $@)
