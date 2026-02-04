@@ -22,24 +22,34 @@ jobs:
             nasm make cmake wget xorriso grub-pc-bin mtools \
             binutils-i686-linux-gnu gcc-i686-linux-gnu
 
+      - name: Download AI Model Asset
+        run: |
+          mkdir -p assets
+          # Using a small model for faster CI builds
+          wget -O assets/smollm2.gguf https://huggingface.co/bartowski/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q4_K_M.gguf
+
       - name: Build BasicallyLinux Kernel
         run: |
           mkdir -p build
           cd build
+          # -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY prevents CMake from 
+          # failing because it can't run a test program (since it's a kernel)
           cmake .. \
             -DCMAKE_C_COMPILER=i686-linux-gnu-gcc \
             -DCMAKE_ASM_NASM_COMPILER=nasm \
             -DCMAKE_ASM_NASM_FLAGS="-f elf32" \
-            -DCMAKE_C_FLAGS="-m32" \
+            -DCMAKE_C_FLAGS="-m32 -ffreestanding -fno-stack-protector" \
             -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY
           make VERBOSE=1
 
       - name: Verify Multiboot Header (CRITICAL)
         run: |
+          # This tool checks if GRUB can actually find the header in the bin file
           if grub-file --is-x86-multiboot build/kernel.bin; then
             echo "✅ Multiboot header found and valid!"
           else
             echo "❌ ERROR: No Multiboot header found in kernel.bin"
+            echo "Check that .multiboot section is at the start of your linker script."
             exit 1
           fi
 
@@ -47,6 +57,7 @@ jobs:
         run: |
           mkdir -p isodir/boot/grub
           cp build/kernel.bin isodir/boot/kernel.bin
+          cp assets/smollm2.gguf isodir/boot/smollm2.gguf
           
           # Create a bulletproof grub.cfg
           cat << 'EOF' > isodir/boot/grub/grub.cfg
@@ -54,6 +65,7 @@ jobs:
           set default=0
           menuentry "BasicallyLinux Alpha" {
               multiboot /boot/kernel.bin
+              module /boot/smollm2.gguf "ai_model"
               boot
           }
           EOF
