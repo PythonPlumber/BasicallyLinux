@@ -19,39 +19,28 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            nasm \
-            make \
-            binutils-i686-linux-gnu \
-            gcc-i686-linux-gnu \
-            grub-common \
-            xorriso \
-            wget
+            nasm make binutils-i686-linux-gnu gcc-i686-linux-gnu wget
 
-      - name: Cache AI Model
-        id: cache-model
-        uses: actions/cache@v4
-        with:
-          path: assets/smollm2.gguf
-          key: ${{ runner.os }}-smollm2-v1
-
-      - name: Download AI Model
-        if: steps.cache-model.outputs.cache-hit != 'true'
+      - name: Download AI Model Asset
         run: |
           mkdir -p assets
-          wget -O assets/smollm2.gguf https://huggingface.co/bartowski/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q4_K_M.gguf
+          # Only download if it doesn't exist (useful if you use caching later)
+          if [ ! -f assets/smollm2.gguf ]; then
+            wget -O assets/smollm2.gguf https://huggingface.co/bartowski/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q4_K_M.gguf
+          fi
 
       - name: Build BasicallyLinux
-        # Pass the asset directory info to your Makefile if needed
         run: |
           mkdir -p bin
           mkdir -p build
+          # Pass cross-compiler variables to the Makefile
           make CC=i686-linux-gnu-gcc LD=i686-linux-gnu-ld AS=nasm
 
-      - name: Archive Build Artifacts
+      - name: Archive Artifacts
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: basicallylinux-binary
+          name: basicallylinux-alpha
           path: |
             bin/basicallylinux.bin
             assets/smollm2.gguf
