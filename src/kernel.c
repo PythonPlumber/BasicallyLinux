@@ -355,8 +355,9 @@ void kernel_main(unsigned int multiboot_magic, unsigned int multiboot_info_addr)
     serial_init();
     serial_write_string("\n\n--- KERNEL STARTING ---\n");
     
-    // Display splash as early as possible
-    vga_display_splash();
+    // Temporarily disable splash to troubleshoot hang
+    // vga_display_splash();
+    serial_write_string("DEBUG: Splash skipped\n");
 
     serial_write_string("DEBUG: Multiboot Magic: 0x");
     serial_write_hex32(multiboot_magic);
@@ -371,6 +372,7 @@ void kernel_main(unsigned int multiboot_magic, unsigned int multiboot_info_addr)
     syscall_init();
     serial_write_string("DEBUG: Syscall Initialized\n");
     diag_init();
+    serial_write_string("DEBUG: Diag Initialized\n");
     diag_log(DIAG_INFO, "boot start");
 
     multiboot_info_t* info = 0;
@@ -381,15 +383,21 @@ void kernel_main(unsigned int multiboot_magic, unsigned int multiboot_info_addr)
             mem_bytes = (info->mem_upper + 1024) * 1024;
         }
     }
-    serial_write_string("DEBUG: Multiboot info parsed\n");
+    serial_write_string("DEBUG: Multiboot info parsed, Memory: ");
+    serial_write_hex32(mem_bytes);
+    serial_write_string(" bytes\n");
+
+    fb_init(info);
+    fb_clear(0);
+    fb_console_init(0xFFFFFF, 0);
+    fb_console_write("Kernel Loading...\n");
+    serial_write_string("DEBUG: Framebuffer Initialized Early\n");
 
     if (mem_bytes > 0x100000) {
         pmm_init(0x100000, mem_bytes - 0x100000);
-    } else {
-        pmm_init(0x100000, 0);
-    }
     diag_log_hex32(DIAG_INFO, "mem_bytes", mem_bytes);
     serial_write_string("DEBUG: PMM Initialized\n");
+    fb_console_write("PMM Initialized\n");
 
     pmm_reserve_region((uint32_t)&kernel_start, (uint32_t)&kernel_end - (uint32_t)&kernel_start);
     if (info) {
@@ -405,12 +413,15 @@ void kernel_main(unsigned int multiboot_magic, unsigned int multiboot_info_addr)
         }
     }
     serial_write_string("DEBUG: Memory regions reserved\n");
+    fb_console_write("Memory Reserved\n");
 
     acpi_scan();
     serial_write_string("DEBUG: ACPI scan complete\n");
+    fb_console_write("ACPI Scanned\n");
 
     paging_init();
     serial_write_string("DEBUG: Paging Initialized\n");
+    fb_console_write("Paging Initialized\n");
 
     serial_write_string("DEBUG: Initializing Interrupt Controller...\n");
     apex_intc_init();
@@ -419,6 +430,7 @@ void kernel_main(unsigned int multiboot_magic, unsigned int multiboot_info_addr)
     serial_write_string("DEBUG: Initializing SMP...\n");
     smp_rally_init();
     serial_write_string("DEBUG: SMP/Interrupt Controller Initialized\n");
+    fb_console_write("SMP/Intc Initialized\n");
 
     serial_write_string("DEBUG: Initializing Power Subsystems...\n");
     power_plane_init();
@@ -448,6 +460,7 @@ void kernel_main(unsigned int multiboot_magic, unsigned int multiboot_info_addr)
     sys_view_init();
     sys_config_init();
     serial_write_string("DEBUG: Subsystems Initialized\n");
+    fb_console_write("Subsystems Initialized\n");
 
     if (cpu_has_sse()) {
         sse_enable();
@@ -457,11 +470,13 @@ void kernel_main(unsigned int multiboot_magic, unsigned int multiboot_info_addr)
     }
     ai_model_init();
     serial_write_string("DEBUG: AI Model Initialized\n");
+    fb_console_write("AI Model Initialized\n");
 
     heap_init();
     slab_init();
     kswapd_init();
     serial_write_string("DEBUG: Memory Management (Heap/Slab) Initialized\n");
+    fb_console_write("Heap/Slab Initialized\n");
 
     numa_init(get_ram_size());
     ipc_init();
@@ -475,15 +490,11 @@ void kernel_main(unsigned int multiboot_magic, unsigned int multiboot_info_addr)
     btrfs_init();
     job_init();
     serial_write_string("DEBUG: FS/IPC/Jobs Initialized\n");
-
-    fb_init(info);
-    fb_clear(0);
-    fb_console_init(0xFFFFFF, 0);
-    fb_console_write("Kernel Loaded Successfully\n");
-    serial_write_string("DEBUG: Framebuffer Initialized\n");
+    fb_console_write("FS/IPC/Jobs Initialized\n");
 
     vfs_init();
     serial_write_string("DEBUG: VFS Initialized\n");
+    fb_console_write("VFS Initialized\n");
 
     if (info && info->mods_count > 0) {
         multiboot_module_t* module = (multiboot_module_t*)info->mods_addr;
@@ -491,26 +502,37 @@ void kernel_main(unsigned int multiboot_magic, unsigned int multiboot_info_addr)
         vfs_set_root(ramdisk_init(module->mod_start, size));
     }
     serial_write_string("DEBUG: Ramdisk mounted\n");
+    fb_console_write("Ramdisk Mounted\n");
 
     scheduler_init();
+    serial_write_string("DEBUG: Scheduler Initialized\n");
+    fb_console_write("Scheduler Initialized\n");
     process_create(task_a, 0);
+    serial_write_string("DEBUG: Task A created\n");
     process_create(task_b, 0);
+    serial_write_string("DEBUG: Task B created\n");
     pit_init(100);
-    serial_write_string("DEBUG: Scheduler/PIT Initialized.\n");
+    serial_write_string("DEBUG: PIT Initialized (100Hz)\n");
+    fb_console_write("PIT Initialized\n");
     
-    fb_clear(0);
-    fb_console_init(0xFFFFFF, 0);
+    fb_console_write("Shell Initializing...\n");
     keyboard_init();
     keyboard_set_callback(shell_on_input);
     shell_init();
+    serial_write_string("DEBUG: Shell Initialized\n");
+    fb_console_write("Shell Initialized\n");
 
     serial_write_string("DEBUG: Kernel Main complete, enabling interrupts...\n");
+    fb_console_write("Enabling Interrupts...\n");
     enable_interrupts();
     serial_write_string("DEBUG: Interrupts enabled\n");
+    fb_console_write("Interrupts Enabled\n");
 #ifdef SELFTEST_AUTORUN
+    serial_write_string("DEBUG: Running Selftests...\n");
     selftest_run();
 #endif
 
+    serial_write_string("DEBUG: Entering Kernel Idle Loop\n");
     for (;;) {
         asm volatile("hlt");
     }

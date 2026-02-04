@@ -112,8 +112,8 @@ static void wait_ticks(uint64_t ticks) {
     uint32_t eflags;
     asm volatile("pushf; pop %0" : "=r"(eflags));
     if (!(eflags & 0x200)) {
-        // Interrupts are disabled, use a busy loop instead
-        for (uint64_t i = 0; i < ticks * 1000000; ++i) {
+        // Interrupts are disabled, use a smaller busy loop to avoid hangs
+        for (uint64_t i = 0; i < ticks * 100000; ++i) {
             asm volatile("nop");
         }
         return;
