@@ -3,7 +3,7 @@
 
 #include "types.h"
 
-typedef void (*keyboard_callback_t)(void);
+typedef void (*keyboard_callback_t)(int);
 
 #define KEY_ARROW_UP 0x80
 #define KEY_ARROW_DOWN 0x81

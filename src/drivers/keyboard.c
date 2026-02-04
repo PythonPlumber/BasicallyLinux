@@ -84,23 +84,27 @@ static registers_t* keyboard_irq(registers_t* regs) {
     }
     if (extended_down) {
         extended_down = 0;
+        int key_to_pass = 0;
         if (scancode == 0x48) {
-            buffer_push((char)KEY_ARROW_UP);
+            key_to_pass = KEY_ARROW_UP;
         } else if (scancode == 0x50) {
-            buffer_push((char)KEY_ARROW_DOWN);
+            key_to_pass = KEY_ARROW_DOWN;
         } else if (scancode == 0x4B) {
-            buffer_push((char)KEY_ARROW_LEFT);
+            key_to_pass = KEY_ARROW_LEFT;
         } else if (scancode == 0x4D) {
-            buffer_push((char)KEY_ARROW_RIGHT);
+            key_to_pass = KEY_ARROW_RIGHT;
         } else if (scancode == 0x53) {
-            buffer_push((char)KEY_DELETE);
+            key_to_pass = KEY_DELETE;
         } else if (scancode == 0x49) {
-            buffer_push((char)KEY_PAGE_UP);
+            key_to_pass = KEY_PAGE_UP;
         } else if (scancode == 0x51) {
-            buffer_push((char)KEY_PAGE_DOWN);
+            key_to_pass = KEY_PAGE_DOWN;
         }
-        if (key_callback) {
-            key_callback();
+        if (key_to_pass) {
+            buffer_push((char)key_to_pass);
+            if (key_callback) {
+                key_callback(key_to_pass);
+            }
         }
         return regs;
     }
@@ -131,9 +135,9 @@ static registers_t* keyboard_irq(registers_t* regs) {
     }
     if (c) {
         buffer_push(c);
-    }
-    if (key_callback) {
-        key_callback();
+        if (key_callback) {
+            key_callback((int)c);
+        }
     }
     return regs;
 }

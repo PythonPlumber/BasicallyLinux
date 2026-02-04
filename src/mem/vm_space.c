@@ -31,8 +31,6 @@ int vm_space_clone_cow(process_t* parent, process_t* child) {
     child->region_count = 0;
     for (uint32_t i = 0; i < parent->region_count; ++i) {
         vm_region_t region = parent->regions[i];
-        uint32_t size = region.end - region.start;
-        (void)size;
         if (region.flags & VM_SHARED) {
             if (!vm_map_shared(child, region.shared_id, region.start)) {
                 return 0;

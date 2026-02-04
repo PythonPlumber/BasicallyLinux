@@ -1438,155 +1438,153 @@ void shell_init(void) {
 
 void shell_on_input(int key) {
     int ch = key;
-    {
-        if (ch == 12) {
-            fb_clear(0);
-            fb_console_init(0xFFFFFF, 0);
-            line_length = 0;
-            cursor_pos = 0;
-            shell_prompt();
-            continue;
+    if (ch == 12) {
+        fb_clear(0);
+        fb_console_init(0xFFFFFF, 0);
+        line_length = 0;
+        cursor_pos = 0;
+        shell_prompt();
+        return;
+    }
+    if (ch == 21) {
+        line_length = 0;
+        cursor_pos = 0;
+        shell_redraw_line();
+        return;
+    }
+    if (ch == 1) {
+        while (cursor_pos > 0) {
+            cursor_pos--;
+            shell_putc('\b');
         }
-        if (ch == 21) {
+        return;
+    }
+    if (ch == 5) {
+        while (cursor_pos < line_length) {
+            shell_putc(line_buffer[cursor_pos]);
+            cursor_pos++;
+        }
+        return;
+    }
+    if (ch == 2) {
+        if (cursor_pos > 0) {
+            cursor_pos--;
+            shell_putc('\b');
+        }
+        return;
+    }
+    if (ch == 6) {
+        if (cursor_pos < line_length) {
+            shell_putc(line_buffer[cursor_pos]);
+            cursor_pos++;
+        }
+        return;
+    }
+    if (ch == 4) {
+        if (cursor_pos < line_length) {
+            for (uint32_t i = cursor_pos; i + 1 < line_length; ++i) {
+                line_buffer[i] = line_buffer[i + 1];
+            }
+            line_length--;
+            shell_redraw_line();
+        }
+        return;
+    }
+    if (ch == KEY_ARROW_UP || ch == 16) {
+        if (history_count > 0 && history_index > 0) {
+            history_index--;
+            shell_set_line(history_at(history_index));
+        }
+        return;
+    }
+    if (ch == KEY_ARROW_DOWN || ch == 14) {
+        if (history_index + 1 < history_count) {
+            history_index++;
+            shell_set_line(history_at(history_index));
+        } else if (history_index < history_count) {
+            history_index = history_count;
             line_length = 0;
             cursor_pos = 0;
             shell_redraw_line();
-            continue;
         }
-        if (ch == 1) {
-            while (cursor_pos > 0) {
-                cursor_pos--;
-                shell_putc('\b');
-            }
-            continue;
-        }
-        if (ch == 5) {
-            while (cursor_pos < line_length) {
-                shell_putc(line_buffer[cursor_pos]);
-                cursor_pos++;
-            }
-            continue;
-        }
-        if (ch == 2) {
-            if (cursor_pos > 0) {
-                cursor_pos--;
-                shell_putc('\b');
-            }
-            continue;
-        }
-        if (ch == 6) {
-            if (cursor_pos < line_length) {
-                shell_putc(line_buffer[cursor_pos]);
-                cursor_pos++;
-            }
-            continue;
-        }
-        if (ch == 4) {
-            if (cursor_pos < line_length) {
-                for (uint32_t i = cursor_pos; i + 1 < line_length; ++i) {
-                    line_buffer[i] = line_buffer[i + 1];
-                }
-                line_length--;
-                shell_redraw_line();
-            }
-            continue;
-        }
-        if (ch == KEY_ARROW_UP || ch == 16) {
-            if (history_count > 0 && history_index > 0) {
-                history_index--;
-                shell_set_line(history_at(history_index));
-            }
-            continue;
-        }
-        if (ch == KEY_ARROW_DOWN || ch == 14) {
-            if (history_index + 1 < history_count) {
-                history_index++;
-                shell_set_line(history_at(history_index));
-            } else if (history_index < history_count) {
-                history_index = history_count;
-                line_length = 0;
-                cursor_pos = 0;
-                shell_redraw_line();
-            }
-            continue;
-        }
-        if (ch == KEY_ARROW_LEFT) {
-            if (cursor_pos > 0) {
-                cursor_pos--;
-                shell_putc('\b');
-            }
-            continue;
-        }
-        if (ch == KEY_ARROW_RIGHT) {
-            if (cursor_pos < line_length) {
-                shell_putc(line_buffer[cursor_pos]);
-                cursor_pos++;
-            }
-            continue;
-        }
-        if (ch == KEY_DELETE) {
-            if (cursor_pos < line_length) {
-                for (uint32_t i = cursor_pos; i + 1 < line_length; ++i) {
-                    line_buffer[i] = line_buffer[i + 1];
-                }
-                line_length--;
-                shell_redraw_line();
-            }
-            continue;
-        }
-        if (ch == KEY_PAGE_UP) {
-            fb_console_scroll(5);
-            continue;
-        }
-        if (ch == KEY_PAGE_DOWN) {
-            fb_console_scroll(-5);
-            continue;
-        }
-        if (ch == '\n') {
-            shell_putc('\n');
-            if (line_length > 0) {
-                uint32_t slot = history_head;
-                for (uint32_t i = 0; i < line_length && i + 1 < SHELL_LINE_SIZE; ++i) {
-                    history[slot][i] = line_buffer[i];
-                }
-                history[slot][line_length] = 0;
-                history_head = (history_head + 1) % SHELL_HISTORY;
-                if (history_count < SHELL_HISTORY) {
-                    history_count++;
-                }
-                history_index = history_count;
-            }
-            line_buffer[line_length] = 0;
-            shell_execute_line();
-            line_length = 0;
-            cursor_pos = 0;
-            shell_prompt();
-            continue;
-        }
-        if (ch == '\t') {
-            shell_autocomplete();
-            continue;
-        }
-        if (ch == '\b') {
-            if (cursor_pos > 0) {
-                for (uint32_t i = cursor_pos - 1; i + 1 < line_length; ++i) {
-                    line_buffer[i] = line_buffer[i + 1];
-                }
-                line_length--;
-                cursor_pos--;
-                shell_redraw_line();
-            }
-            continue;
-        }
-        if (line_length + 1 >= SHELL_LINE_SIZE) {
-            continue;
-        }
-        for (uint32_t i = line_length; i > cursor_pos; --i) {
-            line_buffer[i] = line_buffer[i - 1];
-        }
-        line_buffer[cursor_pos] = (char)ch;
-        line_length++;
-        cursor_pos++;
-        shell_redraw_line();
+        return;
     }
+    if (ch == KEY_ARROW_LEFT) {
+        if (cursor_pos > 0) {
+            cursor_pos--;
+            shell_putc('\b');
+        }
+        return;
+    }
+    if (ch == KEY_ARROW_RIGHT) {
+        if (cursor_pos < line_length) {
+            shell_putc(line_buffer[cursor_pos]);
+            cursor_pos++;
+        }
+        return;
+    }
+    if (ch == KEY_DELETE) {
+        if (cursor_pos < line_length) {
+            for (uint32_t i = cursor_pos; i + 1 < line_length; ++i) {
+                line_buffer[i] = line_buffer[i + 1];
+            }
+            line_length--;
+            shell_redraw_line();
+        }
+        return;
+    }
+    if (ch == KEY_PAGE_UP) {
+        fb_console_scroll(5);
+        return;
+    }
+    if (ch == KEY_PAGE_DOWN) {
+        fb_console_scroll(-5);
+        return;
+    }
+    if (ch == '\n') {
+        shell_putc('\n');
+        if (line_length > 0) {
+            uint32_t slot = history_head;
+            for (uint32_t i = 0; i < line_length && i + 1 < SHELL_LINE_SIZE; ++i) {
+                history[slot][i] = line_buffer[i];
+            }
+            history[slot][line_length] = 0;
+            history_head = (history_head + 1) % SHELL_HISTORY;
+            if (history_count < SHELL_HISTORY) {
+                history_count++;
+            }
+            history_index = history_count;
+        }
+        line_buffer[line_length] = 0;
+        shell_execute_line();
+        line_length = 0;
+        cursor_pos = 0;
+        shell_prompt();
+        return;
+    }
+    if (ch == '\t') {
+        shell_autocomplete();
+        return;
+    }
+    if (ch == '\b') {
+        if (cursor_pos > 0) {
+            for (uint32_t i = cursor_pos - 1; i + 1 < line_length; ++i) {
+                line_buffer[i] = line_buffer[i + 1];
+            }
+            line_length--;
+            cursor_pos--;
+            shell_redraw_line();
+        }
+        return;
+    }
+    if (line_length + 1 >= SHELL_LINE_SIZE) {
+        return;
+    }
+    for (uint32_t i = line_length; i > cursor_pos; --i) {
+        line_buffer[i] = line_buffer[i - 1];
+    }
+    line_buffer[cursor_pos] = (char)ch;
+    line_length++;
+    cursor_pos++;
+    shell_redraw_line();
 }
