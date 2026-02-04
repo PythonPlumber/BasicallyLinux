@@ -1,11 +1,11 @@
 CC := i686-elf-gcc
 AS := nasm
-LD := i686-elf-gcc
+LD := i686-elf-ld
 OBJCOPY := i686-elf-objcopy
 
 CFLAGS := -ffreestanding -O2 -Wall -Wextra -m32 -fno-pie -fno-stack-protector -nostdlib -nostdinc -Iinclude -msse -msse2
 ASFLAGS := -f elf32
-LDFLAGS := -T linker.ld -ffreestanding -O2 -nostdlib -Wl,--build-id=none
+LDFLAGS := -T linker.ld --build-id=none -m elf_i386
 
 SRC_DIR := src
 BUILD_DIR := build
@@ -19,7 +19,7 @@ ASM_OBJS := $(patsubst $(SRC_DIR)/%.s,$(BUILD_DIR)/%.o,$(ASM_SRCS))
 C_OBJS := $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(C_SRCS))
 
 BOOT_OBJ := $(BUILD_DIR)/boot.o
-OTHER_OBJS := $(filter-out $(BOOT_OBJ),$(ASM_OBJS) $(C_OBJS))
+OTHER_OBJS := $(sort $(filter-out $(BOOT_OBJ),$(ASM_OBJS) $(C_OBJS)))
 OBJS := $(BOOT_OBJ) $(OTHER_OBJS)
 
 ifneq ($(MODEL_BLOB),)

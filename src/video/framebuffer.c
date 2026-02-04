@@ -1,4 +1,5 @@
 #include "framebuffer.h"
+#include "vga.h"
 #include "font.h"
 #include "multiboot.h"
 #include "ports.h"
