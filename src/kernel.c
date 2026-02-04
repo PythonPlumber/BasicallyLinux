@@ -359,6 +359,7 @@ void kernel_main(unsigned int multiboot_magic, unsigned int multiboot_info_addr)
     serial_init();
     diag_init();
     diag_log(DIAG_INFO, "boot start");
+    serial_write_string("DEBUG: GDT/IDT/ISR Initialized\n");
 
     multiboot_info_t* info = 0;
     uint32_t mem_bytes = 16u * 1024u * 1024u;
@@ -368,12 +369,16 @@ void kernel_main(unsigned int multiboot_magic, unsigned int multiboot_info_addr)
             mem_bytes = (info->mem_upper + 1024) * 1024;
         }
     }
+    serial_write_string("DEBUG: Multiboot info parsed\n");
+
     if (mem_bytes > 0x100000) {
         pmm_init(0x100000, mem_bytes - 0x100000);
     } else {
         pmm_init(0x100000, 0);
     }
     diag_log_hex32(DIAG_INFO, "mem_bytes", mem_bytes);
+    serial_write_string("DEBUG: PMM Initialized\n");
+
     pmm_reserve_region((uint32_t)&kernel_start, (uint32_t)&kernel_end - (uint32_t)&kernel_start);
     if (info) {
         pmm_reserve_region(align_down((uint32_t)info, 4096), align_up(sizeof(multiboot_info_t), 4096));
@@ -387,12 +392,19 @@ void kernel_main(unsigned int multiboot_magic, unsigned int multiboot_info_addr)
             }
         }
     }
+    serial_write_string("DEBUG: Memory regions reserved\n");
 
     acpi_scan();
+    serial_write_string("DEBUG: ACPI scan complete\n");
+
     paging_init();
+    serial_write_string("DEBUG: Paging Initialized\n");
+
     apex_intc_init();
     msgi_init();
     smp_rally_init();
+    serial_write_string("DEBUG: SMP/Interrupt Controller Initialized\n");
+
     power_plane_init();
     acpi_power_init();
     secure_hard_init();
@@ -414,6 +426,8 @@ void kernel_main(unsigned int multiboot_magic, unsigned int multiboot_info_addr)
     proc_view_init();
     sys_view_init();
     sys_config_init();
+    serial_write_string("DEBUG: Subsystems Initialized\n");
+
     if (cpu_has_sse()) {
         sse_enable();
         ai_set_simd_enabled(cpu_has_sse41());
@@ -421,9 +435,13 @@ void kernel_main(unsigned int multiboot_magic, unsigned int multiboot_info_addr)
         ai_set_simd_enabled(0);
     }
     ai_model_init();
+    serial_write_string("DEBUG: AI Model Initialized\n");
+
     heap_init();
     slab_init();
     kswapd_init();
+    serial_write_string("DEBUG: Memory Management (Heap/Slab) Initialized\n");
+
     numa_init(get_ram_size());
     ipc_init();
     io_sched_init();
@@ -435,29 +453,41 @@ void kernel_main(unsigned int multiboot_magic, unsigned int multiboot_info_addr)
     xfs_init();
     btrfs_init();
     job_init();
+    serial_write_string("DEBUG: FS/IPC/Jobs Initialized\n");
+
     fb_init(info);
     fb_clear(0);
     fb_console_init(0xFFFFFF, 0);
     fb_console_write("Kernel Loaded Successfully\n");
+    serial_write_string("DEBUG: Framebuffer Initialized\n");
+
     vfs_init();
+    serial_write_string("DEBUG: VFS Initialized\n");
 
     if (info && info->mods_count > 0) {
         multiboot_module_t* module = (multiboot_module_t*)info->mods_addr;
         uint32_t size = module->mod_end - module->mod_start;
         vfs_set_root(ramdisk_init(module->mod_start, size));
     }
+    serial_write_string("DEBUG: Ramdisk mounted\n");
 
     scheduler_init();
     process_create(task_a, 0);
     process_create(task_b, 0);
     pit_init(100);
-    enable_interrupts();
+    serial_write_string("DEBUG: Scheduler/PIT Initialized. Displaying splash...\n");
+    
     vga_display_splash();
+
     fb_clear(0);
     fb_console_init(0xFFFFFF, 0);
     keyboard_init();
     keyboard_set_callback(shell_on_input);
     shell_init();
+
+    serial_write_string("DEBUG: Kernel Main complete, enabling interrupts...\n");
+    enable_interrupts();
+    serial_write_string("DEBUG: Interrupts enabled\n");
 #ifdef SELFTEST_AUTORUN
     selftest_run();
 #endif

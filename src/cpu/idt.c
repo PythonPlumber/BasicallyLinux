@@ -57,9 +57,6 @@ extern void irq15(void);
 extern void isr128(void);
 
 void pic_remap(void) {
-    uint8_t a1 = inb(0x21);
-    uint8_t a2 = inb(0xA1);
-
     outb(0x20, 0x11);
     io_wait();
     outb(0xA0, 0x11);
@@ -77,8 +74,8 @@ void pic_remap(void) {
     outb(0xA1, 0x01);
     io_wait();
 
-    outb(0x21, a1);
-    outb(0xA1, a2);
+    outb(0x21, 0x0);
+    outb(0xA1, 0x0);
 }
 
 void idt_set_gate(uint8_t num, uint32_t base, uint16_t selector, uint8_t type, uint8_t dpl, uint8_t present) {

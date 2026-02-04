@@ -190,16 +190,18 @@ static registers_t* irq0_handler(registers_t* regs) {
     kswapd_tick();
     process_t* previous = 0;
     process_t* next = switch_task(regs, &previous);
-    if (!previous || !next || next == previous) {
+    if (!next || next == previous) {
         return regs;
     }
 
-    previous->esp = (uint32_t)regs;
+    if (previous) {
+        previous->esp = (uint32_t)regs;
+    }
 
     if (next->page_directory) {
         load_cr3(next->page_directory);
     }
-    
+
     return (registers_t*)next->esp;
 }
 

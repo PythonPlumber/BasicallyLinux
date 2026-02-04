@@ -97,6 +97,15 @@ static void vga_write_at(const char* text, uint8_t color, uint8_t x, uint8_t y) 
 }
 
 static void wait_ticks(uint64_t ticks) {
+    uint32_t eflags;
+    asm volatile("pushf; pop %0" : "=r"(eflags));
+    if (!(eflags & 0x200)) {
+        // Interrupts are disabled, use a busy loop instead
+        for (uint64_t i = 0; i < ticks * 1000000; ++i) {
+            asm volatile("nop");
+        }
+        return;
+    }
     uint64_t start = timer_get_ticks();
     while ((timer_get_ticks() - start) < ticks) { }
 }
