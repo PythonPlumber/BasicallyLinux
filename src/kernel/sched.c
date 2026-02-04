@@ -1000,7 +1000,7 @@ int process_wait(uint32_t pid, uint32_t* exit_code) {
         }
 
         process_t* child = 0;
-        if (pid == -1) {
+        if ((int32_t)pid == -1) {
             // Any child
             process_t* it = process_list;
             if (it) {
@@ -1044,7 +1044,7 @@ int process_wait(uint32_t pid, uint32_t* exit_code) {
             kfree(child);
             
             spin_unlock(&sched_lock);
-            return pid == -1 ? child->pid : pid;
+            return (int32_t)pid == -1 ? (int)child->pid : (int)pid;
         }
         
         // Child exists but running, sleep

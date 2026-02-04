@@ -6,7 +6,7 @@
 
 static uint32_t* pmm_bitmap = 0;
 static uint32_t pmm_max_blocks = 0;
-static uint32_t pmm_used_blocks = 0;
+static uint32_t pmm_used_block_count = 0;
 static uint32_t pmm_base = 0;
 static uint32_t pmm_next_search = 0;
 static spinlock_t pmm_lock = 0;
@@ -42,7 +42,7 @@ void pmm_init(uint32_t start_addr, uint32_t size) {
     if (managed_base <= start_addr || managed_base > start_addr + size) {
         pmm_bitmap = 0;
         pmm_max_blocks = 0;
-        pmm_used_blocks = 0;
+        pmm_used_block_count = 0;
         pmm_base = 0;
         pmm_next_search = 0;
         spin_unlock(&pmm_lock);
@@ -52,7 +52,7 @@ void pmm_init(uint32_t start_addr, uint32_t size) {
     pmm_base = managed_base;
     pmm_max_blocks = (start_addr + size - managed_base) / PMM_BLOCK_SIZE;
     pmm_bitmap = (uint32_t*)bitmap_start;
-    pmm_used_blocks = 0;
+    pmm_used_block_count = 0;
     pmm_next_search = 0;
     memset(pmm_bitmap, 0, ((pmm_max_blocks + 31) / 32) * 4);
 
@@ -78,7 +78,7 @@ void pmm_init(uint32_t start_addr, uint32_t size) {
         for (uint32_t i = first; i < last; ++i) {
              if (!bitmap_test(i)) {
                 bitmap_set(i);
-                pmm_used_blocks++;
+                pmm_used_block_count++;
             }
         }
     }
@@ -88,7 +88,7 @@ void pmm_init(uint32_t start_addr, uint32_t size) {
 
 uint32_t pmm_alloc_block(void) {
     spin_lock(&pmm_lock);
-    if (!pmm_bitmap || pmm_used_blocks >= pmm_max_blocks) {
+    if (!pmm_bitmap || pmm_used_block_count >= pmm_max_blocks) {
         spin_unlock(&pmm_lock);
         return 0;
     }
@@ -110,7 +110,7 @@ uint32_t pmm_alloc_block(void) {
 
                 if (!bitmap_test(index)) {
                     bitmap_set(index);
-                    pmm_used_blocks++;
+                    pmm_used_block_count++;
                     pmm_next_search = index + 1;
                     spin_unlock(&pmm_lock);
                     return pmm_base + index * PMM_BLOCK_SIZE;
@@ -129,7 +129,7 @@ uint32_t pmm_alloc_block(void) {
                     
                     if (!bitmap_test(index)) {
                         bitmap_set(index);
-                        pmm_used_blocks++;
+                        pmm_used_block_count++;
                         pmm_next_search = index + 1;
                         spin_unlock(&pmm_lock);
                         return pmm_base + index * PMM_BLOCK_SIZE;
@@ -161,8 +161,8 @@ void pmm_free_block(void* addr) {
     }
     if (bitmap_test(index)) {
         bitmap_clear(index);
-        if (pmm_used_blocks > 0) {
-            pmm_used_blocks--;
+        if (pmm_used_block_count > 0) {
+            pmm_used_block_count--;
         }
         if (index < pmm_next_search) {
             pmm_next_search = index;
@@ -198,7 +198,7 @@ void pmm_reserve_region(uint32_t addr, uint32_t size) {
     for (uint32_t i = first; i < last; ++i) {
         if (!bitmap_test(i)) {
             bitmap_set(i);
-            pmm_used_blocks++;
+            pmm_used_block_count++;
         }
     }
     spin_unlock(&pmm_lock);
@@ -209,7 +209,7 @@ uint32_t pmm_total_blocks(void) {
 }
 
 uint32_t pmm_used_blocks(void) {
-    return pmm_used_blocks;
+    return pmm_used_block_count;
 }
 
 uint32_t pmm_block_size(void) {
@@ -224,6 +224,6 @@ uint32_t mem_usage_pct(void) {
     if (pmm_max_blocks == 0) {
         return 0;
     }
-    uint64_t used = (uint64_t)pmm_used_blocks * 100u;
+    uint64_t used = (uint64_t)pmm_used_block_count * 100u;
     return (uint32_t)(used / pmm_max_blocks);
 }
