@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.16)
 
+# For freestanding projects (kernels), we don't have a standard library yet.
+# Tell CMake to only test the compiler by creating a static library instead of an executable.
+set(CMAKE_TRY_COMPILE_TARGET_TYPE "STATIC_LIBRARY")
+
 # Force the NASM object format to 32-bit ELF
 set(CMAKE_ASM_NASM_OBJECT_FORMAT elf32)
 set(CMAKE_ASM_NASM_FLAGS "-f elf32")
@@ -31,6 +35,11 @@ include_directories(include)
 # Source discovery
 file(GLOB_RECURSE ASM_SOURCES "src/*.asm")
 file(GLOB_RECURSE C_SOURCES "src/*.c")
+
+# Ensure boot.asm is ALWAYS FIRST in the link order to keep Multiboot header at the top
+set(BOOT_ASM "${CMAKE_CURRENT_SOURCE_DIR}/src/boot.asm")
+list(REMOVE_ITEM ASM_SOURCES "${BOOT_ASM}")
+set(ASM_SOURCES "${BOOT_ASM}" ${ASM_SOURCES})
 
 # Exclude specific files if needed
 list(FILTER C_SOURCES EXCLUDE REGEX "src/drivers/vga.c")

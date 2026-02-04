@@ -7,8 +7,9 @@ SECTIONS
 
     .text BLOCK(4K) : ALIGN(4K)
     {
-        *(.multiboot)
-        *(.text*)
+        /* MUST be at the very top of the binary */
+        KEEP(*(.multiboot))
+        *(.text)
     }
 
     .rodata BLOCK(4K) : ALIGN(4K)

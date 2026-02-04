@@ -1,0 +1,20 @@
+# OS Development Rules for Cursor
+
+## Environment Context
+- We are building a **freestanding x86 kernel**.
+- **NO Standard Library:** Do not use <stdio.h>, <stdlib.h>, <string.h>, etc.
+- **Allowed Headers:** <stdint.h>, <stddef.h>, <stdbool.h>, and <limits.h>.
+- **Target Architecture:** x86 (32-bit/i686).
+- **Bootloader:** Multiboot compliant (GRUB).
+
+## Coding Preferences
+- Use **Pointer Arithmetic** for memory-mapped I/O (e.g., VGA buffer at 0xB8000).
+- Use **Inline Assembly** (`__asm__ __volatile__`) for CPU instructions like `inb`, `outb`, `cli`, `hlt`, and `lgdt`.
+- Prefer `uint8_t`, `uint16_t`, and `uint32_t` for hardware-specific structures to ensure exact sizing.
+- All structures representing hardware tables (GDT, IDT) MUST be marked with `__attribute__((packed))`.
+
+## Project Structure
+- `/src/boot`: Assembly entry files (.s)
+- `/src/kernel`: Main C logic (.c)
+- `/src/drivers`: Hardware drivers (VGA, Keyboard, etc.)
+- `/include`: Header files (.h)
