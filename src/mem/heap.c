@@ -96,14 +96,69 @@ uint32_t heap_free_bytes(void) {
 }
 
 void* aligned_alloc(uint32_t size, uint32_t align) {
+    if (size == 0 || align == 0 || !heap_head) {
+        return 0;
+    }
     if (align < 16) {
         align = 16;
     }
     if ((align & (align - 1)) != 0) {
         return 0;
     }
-    uint32_t aligned_size = align_up(size, align);
-    return kmalloc(aligned_size);
+
+    size = align_up(size, 16);
+    heap_block_t* current = heap_head;
+    while (current) {
+        if (current->free) {
+            uint32_t data_ptr = (uint32_t)current + sizeof(heap_block_t);
+            uint32_t aligned_ptr = align_up(data_ptr, align);
+            uint32_t padding = aligned_ptr - data_ptr;
+            
+            uint32_t required_size = size + padding;
+            
+            if (current->size >= required_size) {
+                // If there's padding, we MUST split the block so that the 
+                // returned pointer has its header immediately before it.
+                if (padding > 0) {
+                     while (padding < sizeof(heap_block_t)) {
+                         // Not enough space for a header in the padding.
+                         // We need more padding to fit a header.
+                         // Instead, we move to the NEXT aligned address.
+                         aligned_ptr += align;
+                         padding = aligned_ptr - data_ptr;
+                         required_size = size + padding;
+                         
+                         if (current->size < required_size) {
+                             goto next_block;
+                         }
+                     }
+                    
+                    // Now padding >= sizeof(heap_block_t).
+                    // We can split.
+                    uint32_t old_size = current->size;
+                    current->size = padding - sizeof(heap_block_t);
+                    
+                    heap_block_t* next = (heap_block_t*)((uint8_t*)current + padding);
+                    next->size = old_size - padding;
+                    next->free = 1;
+                    next->next = current->next;
+                    current->next = next;
+                    
+                    // The block we want is 'next'
+                    current = next;
+                }
+                
+                // Now split at the end if needed
+                split_block(current, size);
+                current->free = 0;
+                
+                return (void*)((uint8_t*)current + sizeof(heap_block_t));
+            }
+        }
+next_block:
+        current = current->next;
+    }
+    return 0;
 }
 
 void kheap_stats(uint32_t* total_bytes, uint32_t* free_bytes) {

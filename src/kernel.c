@@ -165,18 +165,6 @@ typedef struct {
     uint32_t rsdt_address;
 } acpi_rsdp_t;
 
-typedef struct {
-    uint8_t signature[4];
-    uint32_t length;
-    uint8_t revision;
-    uint8_t checksum;
-    uint8_t oemid[6];
-    uint8_t oem_table_id[8];
-    uint32_t oem_revision;
-    uint32_t creator_id;
-    uint32_t creator_revision;
-} acpi_sdt_header_t;
-
 static uint32_t acpi_rsdp_phys = 0;
 static uint32_t acpi_rsdt_phys = 0;
 static uint32_t acpi_rsdt_count = 0;
@@ -184,16 +172,8 @@ static uint32_t acpi_rsdt_count = 0;
 uint32_t pci_config_read(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset) {
     uint32_t address = (uint32_t)(0x80000000u | ((uint32_t)bus << 16)
         | ((uint32_t)slot << 11) | ((uint32_t)func << 8) | (offset & 0xFC));
-    outb(0xCF8, (uint8_t)(address & 0xFF));
-    outb(0xCF8 + 1, (uint8_t)((address >> 8) & 0xFF));
-    outb(0xCF8 + 2, (uint8_t)((address >> 16) & 0xFF));
-    outb(0xCF8 + 3, (uint8_t)((address >> 24) & 0xFF));
-    uint32_t data = 0;
-    data |= (uint32_t)inb(0xCFC);
-    data |= (uint32_t)inb(0xCFC + 1) << 8;
-    data |= (uint32_t)inb(0xCFC + 2) << 16;
-    data |= (uint32_t)inb(0xCFC + 3) << 24;
-    return data;
+    outl(0xCF8, address);
+    return inl(0xCFC);
 }
 
 uint32_t pci_scan_bus(void) {
@@ -334,6 +314,19 @@ uint32_t acpi_rsdt_entry(uint32_t index) {
     const acpi_sdt_header_t* rsdt = (const acpi_sdt_header_t*)acpi_rsdt_phys;
     const uint32_t* entries = (const uint32_t*)((const uint8_t*)rsdt + sizeof(acpi_sdt_header_t));
     return entries[index];
+}
+
+uint32_t acpi_find_table(const char* signature) {
+    if (!acpi_rsdt_phys) return 0;
+    for (uint32_t i = 0; i < acpi_rsdt_count; ++i) {
+        uint32_t entry = acpi_rsdt_entry(i);
+        if (!entry) continue;
+        const acpi_sdt_header_t* hdr = (const acpi_sdt_header_t*)entry;
+        if (memcmp(hdr->signature, signature, 4) == 0) {
+            return entry;
+        }
+    }
+    return 0;
 }
 
 static void task_a(void) {

@@ -2,6 +2,7 @@
 #include "sched.h"
 #include "secure_caps.h"
 #include "signal.h"
+#include "smp_rally.h"
 #include "timer.h"
 #include "types.h"
 #include "vm_space.h"
@@ -101,10 +102,11 @@ static void list_append(process_t* proc) {
 static void enqueue_task(process_t* proc) {
     uint32_t best_cpu = 0;
     uint32_t min_count = 0xFFFFFFFF;
+    uint32_t online = smp_rally_online_mask();
     
-    // Find best CPU
+    // Find best CPU among online ones in mask
     for (uint32_t i = 0; i < MAX_CPUS; i++) {
-        if ((proc->cpu_mask & (1 << i)) && runqueues[i].count < min_count) {
+        if ((online & (1 << i)) && (proc->cpu_mask & (1 << i)) && runqueues[i].count < min_count) {
             min_count = runqueues[i].count;
             best_cpu = i;
         }
@@ -288,7 +290,7 @@ static process_t* process_create_ex(void (*entry)(void), uint32_t* page_director
     proc->time_slice = default_time_slice;
     proc->time_remaining = default_time_slice;
     proc->sched_class = SCHED_CLASS_CFS;
-    proc->cpu_mask = 1;
+    proc->cpu_mask = 0xFFFFFFFF;
     proc->cgroup_share = 1024;
     
     proc->parent_pid = proc->pid;
@@ -513,9 +515,10 @@ void scheduler_balance_load(void) {
     
     uint32_t busiest_cpu = this_cpu;
     uint32_t max_count = 0;
+    uint32_t online = smp_rally_online_mask();
     
     for (uint32_t i = 0; i < MAX_CPUS; i++) {
-        if (runqueues[i].count > max_count) {
+        if ((online & (1 << i)) && runqueues[i].count > max_count) {
             max_count = runqueues[i].count;
             busiest_cpu = i;
         }
@@ -692,7 +695,7 @@ process_t* switch_task(registers_t* saved_stack, process_t** previous) {
             int switch_needed = 0;
             if (best) {
                 // Priority class overrides
-                if (best->sched_class < current->sched_class) switch_needed = 1; 
+                if (best->sched_class > current->sched_class) switch_needed = 1; 
                 else if (best->sched_class == current->sched_class) {
                      if (best->sched_class == SCHED_CLASS_RT && best_prio > current_prio) switch_needed = 1;
                      else if (best->sched_class == SCHED_CLASS_CFS && best->vruntime < current->vruntime) switch_needed = 1;
@@ -967,6 +970,7 @@ void process_exit(process_t* proc, uint32_t code) {
                  process_t* next = p->wait_next;
                  p->wait_next = 0;
                  p->state = PROCESS_READY;
+                 enqueue_task(p);
                  p = next;
              }
              queue->head = 0;
@@ -1098,6 +1102,8 @@ process_t* wait_queue_wake_one(wait_queue_t* queue) {
     
     proc->wait_next = 0;
     proc->state = PROCESS_READY;
+    enqueue_task(proc);
+    
     spin_unlock(&sched_lock);
     return proc;
 }
@@ -1115,6 +1121,7 @@ uint32_t wait_queue_wake_all(wait_queue_t* queue) {
         process_t* next = proc->wait_next;
         proc->wait_next = 0;
         proc->state = PROCESS_READY;
+        enqueue_task(proc);
         proc = next;
         count++;
     }
