@@ -1,3 +1,6 @@
+#ifndef FRAMEBUFFER_H
+#define FRAMEBUFFER_H
+
 #include "types.h"
 
 typedef struct {
@@ -20,3 +23,5 @@ void fb_console_backspace(void);
 void fb_console_set_mode(int use_vector);
 void fb_console_set_color(uint32_t color);
 void fb_console_scroll(int lines);
+
+#endif

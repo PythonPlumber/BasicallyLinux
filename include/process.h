@@ -1,11 +1,14 @@
+#ifndef PROCESS_H
+#define PROCESS_H
+
 #include "secure_caps.h"
 #include "types.h"
 
-typedef struct process process_t;
+struct process;
 
 typedef struct wait_queue {
-    process_t* head;
-    process_t* tail;
+    struct process* head;
+    struct process* tail;
 } wait_queue_t;
 
 typedef struct fs_node fs_node_t;
@@ -104,3 +107,5 @@ typedef struct process {
     struct process* run_next;
     wait_queue_t wait_queue;
 } process_t;
+
+#endif

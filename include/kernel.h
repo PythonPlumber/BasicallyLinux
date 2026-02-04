@@ -1,3 +1,6 @@
+#ifndef KERNEL_H
+#define KERNEL_H
+
 #include "types.h"
 
 void kernel_main(unsigned int multiboot_magic, unsigned int multiboot_info_addr);
@@ -18,3 +21,5 @@ uint32_t acpi_rsdp_addr(void);
 uint32_t acpi_rsdt_addr(void);
 uint32_t acpi_rsdt_entries(void);
 uint32_t acpi_rsdt_entry(uint32_t index);
+
+#endif

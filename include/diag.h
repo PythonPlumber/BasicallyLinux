@@ -1,3 +1,6 @@
+#ifndef DIAG_H
+#define DIAG_H
+
 #include "types.h"
 
 typedef enum {
@@ -14,3 +17,5 @@ uint32_t diag_count(void);
 const char* diag_get(uint32_t index);
 void diag_set_enabled(int enabled);
 int diag_is_enabled(void);
+
+#endif

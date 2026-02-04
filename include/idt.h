@@ -1,3 +1,6 @@
+#ifndef IDT_H
+#define IDT_H
+
 #include "types.h"
 
 typedef struct {
@@ -29,3 +32,5 @@ void register_interrupt_handler(uint8_t n, isr_t handler);
 void isr_init(void);
 uint64_t timer_get_ticks(void);
 void pic_remap(void);
+
+#endif

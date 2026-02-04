@@ -1,3 +1,6 @@
+#ifndef FONT_H
+#define FONT_H
+
 #include "types.h"
 
 typedef struct {
@@ -16,3 +19,5 @@ typedef struct {
 const bitmap_font_t* font_bitmap_get(void);
 vector_glyph_t font_vector_get(uint32_t codepoint);
 uint32_t utf8_decode(const char* text, uint32_t* index);
+
+#endif

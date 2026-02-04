@@ -1,3 +1,6 @@
+#ifndef KSWAPD_H
+#define KSWAPD_H
+
 #include "types.h"
 
 typedef uint32_t (*reclaimer_fn)(uint32_t target_pages);
@@ -14,3 +17,5 @@ void kswapd_tick(void);
 int kswapd_register_reclaimer(reclaimer_fn fn);
 void kswapd_set_watermarks(uint32_t low_pct, uint32_t high_pct);
 kswapd_state_t kswapd_state(void);
+
+#endif

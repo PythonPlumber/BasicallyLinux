@@ -1,3 +1,6 @@
+#ifndef NUMA_H
+#define NUMA_H
+
 #include "types.h"
 
 typedef struct {
@@ -16,3 +19,5 @@ uint32_t numa_add_node(uint32_t base, uint32_t size);
 void numa_set_distance(uint32_t a, uint32_t b, uint32_t distance);
 uint32_t numa_distance(uint32_t a, uint32_t b);
 uint32_t numa_preferred_node(uint32_t cpu_id);
+
+#endif

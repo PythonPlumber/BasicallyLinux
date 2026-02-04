@@ -1,3 +1,6 @@
+#ifndef AI_MODEL_H
+#define AI_MODEL_H
+
 #include "fixedpoint.h"
 #include "gguf.h"
 #include "types.h"
@@ -108,3 +111,5 @@ void ai_explain_page_fault(uint32_t err_code);
 void ai_ask(const char* prompt, const ai_context_t* context);
 void ai_infer(const char* prompt, const ai_context_t* context);
 uint32_t ai_debug_last_tokens(char* out, uint32_t max);
+
+#endif

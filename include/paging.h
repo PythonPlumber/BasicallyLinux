@@ -1,3 +1,6 @@
+#ifndef PAGING_H
+#define PAGING_H
+
 #include "process.h"
 #include "types.h"
 
@@ -38,3 +41,5 @@ int vm_unmap_region(process_t* proc, uint32_t start, uint32_t size);
 int vm_handle_page_fault(process_t* proc, uint32_t addr, uint32_t err_code);
 int vm_create_shared(uint32_t pages);
 int vm_map_shared(process_t* proc, uint32_t shared_id, uint32_t start);
+
+#endif

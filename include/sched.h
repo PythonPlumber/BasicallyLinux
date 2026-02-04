@@ -1,3 +1,6 @@
+#ifndef SCHED_H
+#define SCHED_H
+
 #include "idt.h"
 #include "process.h"
 
@@ -30,3 +33,5 @@ void wait_queue_init(wait_queue_t* queue);
 void wait_queue_wait(wait_queue_t* queue);
 process_t* wait_queue_wake_one(wait_queue_t* queue);
 uint32_t wait_queue_wake_all(wait_queue_t* queue);
+
+#endif

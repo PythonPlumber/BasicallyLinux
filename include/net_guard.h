@@ -1,3 +1,6 @@
+#ifndef NET_GUARD_H
+#define NET_GUARD_H
+
 #include "types.h"
 
 typedef struct {
@@ -16,3 +19,5 @@ void net_guard_init(void);
 net_guard_state_t* net_guard_state(void);
 uint32_t net_guard_add_rule(uint32_t src, uint32_t dst, uint32_t port, uint32_t allow);
 uint32_t net_guard_check(uint32_t src, uint32_t dst, uint32_t port);
+
+#endif

@@ -1,3 +1,6 @@
+#ifndef PAGE_CACHE_H
+#define PAGE_CACHE_H
+
 #include "types.h"
 
 typedef struct {
@@ -15,3 +18,5 @@ void page_cache_mark_dirty(page_cache_entry_t* entry);
 uint32_t page_cache_writeback(uint32_t max_pages, uint32_t (*write_fn)(uint32_t inode_id, uint32_t page_index, const uint8_t* data));
 uint32_t page_cache_reclaim(uint32_t target_pages);
 uint32_t page_cache_cached(void);
+
+#endif

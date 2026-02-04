@@ -1,3 +1,6 @@
+#ifndef DEBUG_H
+#define DEBUG_H
+
 #include "types.h"
 
 void debug_write(const char* msg);
@@ -7,3 +10,5 @@ void panic(const char* msg);
 void debug_backtrace(uint32_t max_frames);
 void debug_backtrace_from(uint32_t ebp, uint32_t max_frames);
 void kprintf(const char* fmt, ...);
+
+#endif

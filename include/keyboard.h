@@ -1,3 +1,6 @@
+#ifndef KEYBOARD_H
+#define KEYBOARD_H
+
 typedef void (*keyboard_callback_t)(void);
 
 #define KEY_ARROW_UP 0x80
@@ -14,3 +17,5 @@ int keyboard_read_char(char* out);
 uint8_t get_keyboard_scancode(void);
 char scancode_to_ascii(uint8_t scancode, int shift);
 char keyboard_wait(void);
+
+#endif

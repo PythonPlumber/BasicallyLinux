@@ -1,3 +1,6 @@
+#ifndef NET_IP_H
+#define NET_IP_H
+
 #include "types.h"
 
 typedef struct {
@@ -7,3 +10,5 @@ typedef struct {
 
 void net_ip_init(void);
 net_ip_state_t* net_ip_state(void);
+
+#endif

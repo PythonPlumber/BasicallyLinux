@@ -1,3 +1,6 @@
+#ifndef NET_LINK_H
+#define NET_LINK_H
+
 #include "types.h"
 
 typedef struct {
@@ -7,3 +10,5 @@ typedef struct {
 
 void net_link_init(void);
 net_link_t* net_link_primary(void);
+
+#endif

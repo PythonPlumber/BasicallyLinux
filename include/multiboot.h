@@ -1,3 +1,6 @@
+#ifndef MULTIBOOT_H
+#define MULTIBOOT_H
+
 #include "types.h"
 
 typedef struct {
@@ -30,3 +33,5 @@ typedef struct {
     uint16_t vbe_interface_off;
     uint16_t vbe_interface_len;
 } multiboot_info_t;
+
+#endif

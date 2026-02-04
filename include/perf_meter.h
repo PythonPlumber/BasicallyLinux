@@ -1,3 +1,6 @@
+#ifndef PERF_METER_H
+#define PERF_METER_H
+
 #include "types.h"
 
 typedef struct {
@@ -10,3 +13,5 @@ typedef struct {
 void perf_meter_init(perf_meter_t* meter);
 void perf_meter_sample(perf_meter_t* meter, uint64_t cycles);
 uint64_t perf_meter_avg(const perf_meter_t* meter);
+
+#endif

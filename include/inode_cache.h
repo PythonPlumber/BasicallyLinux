@@ -1,3 +1,6 @@
+#ifndef INODE_CACHE_H
+#define INODE_CACHE_H
+
 #include "types.h"
 
 typedef struct {
@@ -12,3 +15,5 @@ typedef struct {
 void inode_cache_init(void);
 inode_entry_t* inode_cache_get(uint32_t inode_id);
 void inode_cache_put(uint32_t inode_id);
+
+#endif

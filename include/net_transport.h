@@ -1,3 +1,6 @@
+#ifndef NET_TRANSPORT_H
+#define NET_TRANSPORT_H
+
 #include "types.h"
 
 typedef struct {
@@ -18,3 +21,5 @@ void net_transport_init(void);
 net_transport_state_t* net_transport_state(void);
 uint32_t net_transport_open(uint32_t src, uint32_t dst, uint32_t src_port, uint32_t dst_port);
 uint32_t net_transport_close(uint32_t index);
+
+#endif

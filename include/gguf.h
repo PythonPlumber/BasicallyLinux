@@ -1,3 +1,6 @@
+#ifndef GGUF_H
+#define GGUF_H
+
 #include "types.h"
 
 #define GGUF_MAGIC 0x46554747u
@@ -186,3 +189,5 @@ static inline int gguf_skip_kv_pairs(gguf_reader_t* r, uint64_t kv_count) {
     }
     return 1;
 }
+
+#endif

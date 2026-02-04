@@ -1,3 +1,6 @@
+#ifndef PROC_VIEW_H
+#define PROC_VIEW_H
+
 #include "types.h"
 
 typedef struct {
@@ -6,3 +9,5 @@ typedef struct {
 
 void proc_view_init(void);
 proc_view_state_t proc_view_state(void);
+
+#endif

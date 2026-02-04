@@ -1,3 +1,6 @@
+#ifndef JOURNAL_H
+#define JOURNAL_H
+
 #include "types.h"
 
 typedef struct {
@@ -8,3 +11,5 @@ typedef struct {
 void journal_init(void);
 journal_tx_t journal_begin(void);
 void journal_commit(journal_tx_t tx);
+
+#endif

@@ -1,3 +1,6 @@
+#ifndef SECURE_POLICY_H
+#define SECURE_POLICY_H
+
 #include "types.h"
 
 typedef struct {
@@ -19,3 +22,5 @@ uint32_t secure_policy_check_path(uint32_t subject, const char* path, uint32_t a
 #define SECURE_ACTION_EXEC 4u
 #define SECURE_ACTION_NET 8u
 #define SECURE_ACTION_ADMIN 16u
+
+#endif

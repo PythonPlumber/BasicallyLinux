@@ -1,3 +1,6 @@
+#ifndef INTERRUPTS_H
+#define INTERRUPTS_H
+
 #include "types.h"
 
 typedef struct {
@@ -11,3 +14,5 @@ typedef registers_t* (*isr_t)(registers_t* regs);
 
 void register_interrupt_handler(uint8_t n, isr_t handler);
 void idt_init(void);
+
+#endif

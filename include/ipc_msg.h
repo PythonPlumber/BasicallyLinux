@@ -1,3 +1,6 @@
+#ifndef IPC_MSG_H
+#define IPC_MSG_H
+
 #include "types.h"
 
 #define IPC_MSG_MAX 16
@@ -18,3 +21,5 @@ typedef struct {
 void ipc_msg_init(ipc_msg_queue_t* queue);
 int ipc_msg_send(ipc_msg_queue_t* queue, const uint8_t* data, uint32_t size);
 int ipc_msg_recv(ipc_msg_queue_t* queue, uint8_t* data, uint32_t* size);
+
+#endif

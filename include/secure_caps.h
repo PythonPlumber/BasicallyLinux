@@ -1,3 +1,6 @@
+#ifndef SECURE_CAPS_H
+#define SECURE_CAPS_H
+
 #include "types.h"
 
 #define SECURE_CAP_MAX 32
@@ -20,3 +23,5 @@ secure_caps_t secure_caps_from_mask(uint32_t mask);
 uint32_t secure_caps_has(secure_caps_t caps, uint32_t cap);
 secure_caps_t secure_caps_add(secure_caps_t caps, uint32_t cap);
 secure_caps_t secure_caps_remove(secure_caps_t caps, uint32_t cap);
+
+#endif

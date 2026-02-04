@@ -1,3 +1,6 @@
+#ifndef IO_SCHED_H
+#define IO_SCHED_H
+
 #include "block.h"
 #include "types.h"
 
@@ -12,3 +15,5 @@ typedef struct {
 void io_sched_init(void);
 int io_sched_queue(io_request_t* req);
 void io_sched_run(void);
+
+#endif

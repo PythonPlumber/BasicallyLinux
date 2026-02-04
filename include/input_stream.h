@@ -1,3 +1,6 @@
+#ifndef INPUT_STREAM_H
+#define INPUT_STREAM_H
+
 #include "types.h"
 
 typedef struct {
@@ -9,3 +12,5 @@ typedef struct {
 void input_stream_init(void);
 int input_stream_push(const input_event_t* ev);
 int input_stream_pop(input_event_t* ev);
+
+#endif
