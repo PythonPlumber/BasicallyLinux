@@ -26,22 +26,29 @@ jobs:
             libgcc-s1-i386-cross \
             wget
 
+      - name: Cache AI Model
+        id: cache-model
+        uses: actions/cache@v4
+        with:
+          path: assets/smollm2.gguf
+          key: ${{ runner.os }}-model-smollm2
+
       - name: Download AI Model Asset
+        if: steps.cache-model.outputs.cache-hit != 'true'
         run: |
           mkdir -p assets
-          if [ ! -f assets/smollm2.gguf ]; then
-            wget -O assets/smollm2.gguf https://huggingface.co/bartowski/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q4_K_M.gguf
-          fi
+          wget -O assets/smollm2.gguf https://huggingface.co/bartowski/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q4_K_M.gguf
+
+      - name: Configure CMake
+        run: |
+          cmake -B build \
+            -DCMAKE_C_COMPILER=i686-linux-gnu-gcc \
+            -DCMAKE_ASM_NASM_COMPILER=nasm \
+            -DCMAKE_BUILD_TYPE=Release
 
       - name: Build BasicallyLinux
         run: |
-          mkdir -p bin
-          mkdir -p build
-          # We use GCC as the linker wrapper to automatically locate libgcc.a
-          # This solves the __udivdi3 and __divdi3 errors
-          make CC=i686-linux-gnu-gcc \
-               LD=i686-linux-gnu-gcc \
-               AS=nasm
+          cmake --build build
 
       - name: Archive Artifacts
         if: success()
@@ -49,5 +56,5 @@ jobs:
         with:
           name: basicallylinux-alpha
           path: |
-            kernel.bin
+            build/kernel.bin
             assets/smollm2.gguf

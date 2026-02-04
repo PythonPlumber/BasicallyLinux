@@ -9,7 +9,7 @@ LDFLAGS := -T linker.ld -nostdlib -m32 -no-pie -Wl,-z,noexecstack
 
 SRC_DIR := src
 BUILD_DIR := build
-MODEL_BLOB := $(firstword $(wildcard assets/smollm-135m.gguf) $(wildcard assets/SmolLM2-135M-Instruct-Q4_K_M.gguf))
+MODEL_BLOB := $(firstword $(wildcard assets/smollm2.gguf) $(wildcard assets/smollm-135m.gguf) $(wildcard assets/SmolLM2-135M-Instruct-Q4_K_M.gguf))
 MODEL_OBJ := $(BUILD_DIR)/model.o
 
 ASM_SRCS := $(shell find $(SRC_DIR) -name "*.s")
@@ -40,7 +40,7 @@ $(BUILD_DIR)/%.c.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 kernel.bin: $(OBJS) linker.ld
-	$(LD) $(LDFLAGS) $(OBJS) -lgcc
+	$(LD) $(LDFLAGS) -o $@ $(OBJS) -lgcc
 
 $(MODEL_OBJ): $(MODEL_BLOB)
 	mkdir -p $(dir $@)

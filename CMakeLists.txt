@@ -1,0 +1,84 @@
+cmake_minimum_required(VERSION 3.16)
+project(BasicallyLinux C ASM_NASM)
+
+# Enable NASM support
+enable_language(ASM_NASM)
+
+# Toolchain configuration (can be overridden by command line)
+set(CMAKE_C_COMPILER i686-linux-gnu-gcc)
+set(CMAKE_ASM_NASM_COMPILER nasm)
+
+# Compilation flags
+add_compile_options(
+    -ffreestanding
+    -O2
+    -Wall
+    -Wextra
+    -m32
+    -fno-pie
+    -fno-PIC
+    -fno-stack-protector
+    -nostdlib
+    -nostdinc
+    -msse
+    -msse2
+)
+
+include_directories(include)
+
+# Source discovery
+file(GLOB_RECURSE ASM_SOURCES "src/*.s")
+file(GLOB_RECURSE C_SOURCES "src/*.c")
+
+# Exclude specific files if needed
+list(FILTER C_SOURCES EXCLUDE REGEX "src/drivers/vga.c")
+
+# Handle AI Model Blob
+set(ASSETS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets")
+set(MODEL_BLOB "")
+
+# Check for model candidates
+set(CANDIDATES
+    "${ASSETS_DIR}/smollm2.gguf"
+    "${ASSETS_DIR}/smollm-135m.gguf"
+    "${ASSETS_DIR}/SmolLM2-135M-Instruct-Q4_K_M.gguf"
+)
+
+foreach(CANDIDATE ${CANDIDATES})
+    if(EXISTS "${CANDIDATE}")
+        set(MODEL_BLOB "${CANDIDATE}")
+        message(STATUS "Found AI model blob: ${MODEL_BLOB}")
+        break()
+    endif()
+endforeach()
+
+if(MODEL_BLOB)
+    set(MODEL_OBJ "${CMAKE_CURRENT_BINARY_DIR}/model.o")
+    add_custom_command(
+        OUTPUT ${MODEL_OBJ}
+        COMMAND i686-linux-gnu-objcopy -I binary -O elf32-i386 -B i386 
+                --rename-section .data=.ai_model,alloc,load,readonly,data,contents 
+                "${MODEL_BLOB}" "${MODEL_OBJ}"
+        DEPENDS "${MODEL_BLOB}"
+        COMMENT "Converting AI model blob to object file"
+    )
+    # Add the object file to the sources
+    list(APPEND ASM_SOURCES ${MODEL_OBJ})
+else()
+    message(WARNING "AI model blob not found. Kernel will be built without AI support.")
+endif()
+
+# Build Kernel Binary
+set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker.ld")
+
+# We use add_executable but we need to control the linking process
+add_executable(kernel.bin ${ASM_SOURCES} ${C_SOURCES})
+
+set_target_properties(kernel.bin PROPERTIES
+    LINK_FLAGS "-T \"${LINKER_SCRIPT}\" -nostdlib -m32 -no-pie -Wl,-z,noexecstack"
+    SUFFIX ""
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+)
+
+# Link with libgcc for arithmetic operations
+target_link_libraries(kernel.bin gcc)
