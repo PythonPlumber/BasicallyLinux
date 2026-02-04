@@ -24,6 +24,7 @@ jobs:
             binutils-i686-linux-gnu \
             gcc-i686-linux-gnu \
             libgcc-s1-i386-cross \
+            gcc-multilib \
             wget
 
       - name: Cache AI Model
@@ -43,8 +44,12 @@ jobs:
         run: |
           mkdir -p build
           cd build
-          # Force the assembler and compiler to 32-bit mode
-          cmake .. -DCMAKE_ASM_NASM_FLAGS="-f elf32" -DCMAKE_C_FLAGS="-m32"
+          # Use the cross-compiler explicitly and force 32-bit mode
+          cmake .. \
+            -DCMAKE_C_COMPILER=i686-linux-gnu-gcc \
+            -DCMAKE_ASM_NASM_COMPILER=nasm \
+            -DCMAKE_ASM_NASM_FLAGS="-f elf32" \
+            -DCMAKE_C_FLAGS="-m32"
           make
 
       - name: Verify Kernel Architecture
