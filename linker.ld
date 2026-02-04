@@ -1,42 +1,59 @@
 ENTRY(_start)
 
+PHDRS
+{
+    multiboot PT_LOAD FLAGS(5); /* Read + Execute */
+    text PT_LOAD FLAGS(5);      /* Read + Execute */
+    data PT_LOAD FLAGS(6);      /* Read + Write */
+}
+
 SECTIONS
 {
     /* The kernel starts at 1MB */
     . = 1M;
 
-    .multiboot BLOCK(4K) : ALIGN(4K)
+    .multiboot : AT(ADDR(.multiboot))
     {
         KEEP(*(.multiboot))
-    }
+    } : multiboot
 
-    .text BLOCK(4K) : ALIGN(4K)
+    .text : AT(ADDR(.text))
     {
         *(.text)
-    }
+        *(.text.*)
+    } : text
 
-    .rodata BLOCK(4K) : ALIGN(4K)
+    .rodata : AT(ADDR(.rodata))
     {
-        *(.rodata*)
-    }
+        *(.rodata)
+        *(.rodata.*)
+    } : data
 
-    .ai_model BLOCK(4K) : ALIGN(4K)
+    .ai_model : AT(ADDR(.ai_model))
     {
         _ai_model_start = .;
         KEEP(*(.ai_model*))
         _ai_model_end = .;
-    }
+    } : data
 
-    .data BLOCK(4K) : ALIGN(4K)
+    .data : AT(ADDR(.data))
     {
-        *(.data*)
-    }
+        *(.data)
+        *(.data.*)
+    } : data
 
-    .bss BLOCK(4K) : ALIGN(4K)
+    .bss : AT(ADDR(.bss))
     {
+        *(.bss)
+        *(.bss.*)
         *(COMMON)
-        *(.bss*)
-    }
+    } : data
 
     kernel_end = .;
+
+    /DISCARD/ :
+    {
+        *(.comment)
+        *(.note*)
+    }
 }
