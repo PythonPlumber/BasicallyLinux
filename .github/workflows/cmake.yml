@@ -1,0 +1,46 @@
+name: BasicallyLinux CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Source Code
+      uses: actions/checkout@v4
+
+    - name: Install Build Essentials
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          nasm \
+          make \
+          binutils-i686-linux-gnu \
+          gcc-i686-linux-gnu \
+          grub-pc-bin \
+          xorriso
+
+    - name: Compile BasicallyLinux
+      run: |
+        # We specify the cross-compiler explicitly in case the Makefile 
+        # uses generic 'gcc' or 'ld' names.
+        make CC=i686-linux-gnu-gcc LD=i686-linux-gnu-ld AS=nasm
+
+    - name: Verify Binary Integrity
+      run: |
+        if [ ! -f bin/basicallylinux.bin ]; then
+          echo "❌ Error: basicallylinux.bin was not generated!"
+          exit 1
+        fi
+        echo "✅ Build Successful: Kernel binary verified."
+
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: basicallylinux-kernel-bin
+        path: bin/basicallylinux.bin
