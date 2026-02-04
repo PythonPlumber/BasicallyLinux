@@ -1,3 +1,6 @@
+#ifndef VFS_H
+#define VFS_H
+
 #include "types.h"
 
 typedef struct fs_node fs_node_t;
@@ -42,3 +45,5 @@ void vfs_close_node(fs_node_t* node);
 uint32_t vfs_readdir(fs_node_t* node, uint32_t index, fs_node_t* out);
 fs_node_t* vfs_finddir(fs_node_t* node, const char* name);
 uint32_t vfs_fsync(fs_node_t* node);
+
+#endif
