@@ -69,6 +69,7 @@ static char cmd_diag_name[] = "diag";
 static char cmd_acpi_name[] = "acpi";
 static char cmd_cpuinfo_name[] = "cpuinfo";
 
+static void shell_redraw_line(void);
 static void shell_putc(char ch);
 static void shell_write(const char* str);
 static void shell_prompt(void);
@@ -1435,9 +1436,9 @@ void shell_init(void) {
     shell_prompt();
 }
 
-void shell_on_input(void) {
-    char ch;
-    while (keyboard_read_char(&ch)) {
+void shell_on_input(int key) {
+    int ch = key;
+    {
         if (ch == 12) {
             fb_clear(0);
             fb_console_init(0xFFFFFF, 0);
@@ -1583,7 +1584,7 @@ void shell_on_input(void) {
         for (uint32_t i = line_length; i > cursor_pos; --i) {
             line_buffer[i] = line_buffer[i - 1];
         }
-        line_buffer[cursor_pos] = ch;
+        line_buffer[cursor_pos] = (char)ch;
         line_length++;
         cursor_pos++;
         shell_redraw_line();

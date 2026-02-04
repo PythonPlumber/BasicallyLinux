@@ -7,6 +7,6 @@ typedef struct {
 } command_t;
 
 void shell_init(void);
-void shell_on_input(void);
+void shell_on_input(int key);
 
 #endif
