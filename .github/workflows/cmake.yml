@@ -19,12 +19,16 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            nasm make binutils-i686-linux-gnu gcc-i686-linux-gnu wget
+            nasm \
+            make \
+            binutils-i686-linux-gnu \
+            gcc-i686-linux-gnu \
+            libgcc-s1-i386-cross \
+            wget
 
       - name: Download AI Model Asset
         run: |
           mkdir -p assets
-          # Only download if it doesn't exist (useful if you use caching later)
           if [ ! -f assets/smollm2.gguf ]; then
             wget -O assets/smollm2.gguf https://huggingface.co/bartowski/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q4_K_M.gguf
           fi
@@ -33,8 +37,11 @@ jobs:
         run: |
           mkdir -p bin
           mkdir -p build
-          # Pass cross-compiler variables to the Makefile
-          make CC=i686-linux-gnu-gcc LD=i686-linux-gnu-ld AS=nasm
+          # We use GCC as the linker wrapper to automatically locate libgcc.a
+          # This solves the __udivdi3 and __divdi3 errors
+          make CC=i686-linux-gnu-gcc \
+               LD=i686-linux-gnu-gcc \
+               AS=nasm
 
       - name: Archive Artifacts
         if: success()
@@ -42,5 +49,5 @@ jobs:
         with:
           name: basicallylinux-alpha
           path: |
-            bin/basicallylinux.bin
+            kernel.bin
             assets/smollm2.gguf
