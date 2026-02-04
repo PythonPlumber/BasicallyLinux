@@ -18,7 +18,9 @@ C_SRCS := $(wildcard $(SRC_DIR)/*.c $(SRC_DIR)/*/*.c $(SRC_DIR)/*/*/*.c)
 ASM_OBJS := $(patsubst $(SRC_DIR)/%.s,$(BUILD_DIR)/%.o,$(ASM_SRCS))
 C_OBJS := $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(C_SRCS))
 
-OBJS := $(ASM_OBJS) $(C_OBJS)
+BOOT_OBJ := $(BUILD_DIR)/boot.o
+OTHER_OBJS := $(filter-out $(BOOT_OBJ),$(ASM_OBJS) $(C_OBJS))
+OBJS := $(BOOT_OBJ) $(OTHER_OBJS)
 
 ifneq ($(MODEL_BLOB),)
 OBJS += $(MODEL_OBJ)

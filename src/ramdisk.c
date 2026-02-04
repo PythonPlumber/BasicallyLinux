@@ -30,6 +30,7 @@ static uint32_t ramdisk_read(fs_node_t* node, uint32_t offset, uint32_t size, ui
 }
 
 fs_node_t* ramdisk_init(uint32_t module_start, uint32_t module_size) {
+    (void)module_size;
     initrd_base = (uint8_t*)module_start;
     initrd_header = (initrd_header_t*)initrd_base;
     file_headers = (initrd_file_header_t*)(initrd_base + sizeof(initrd_header_t));
