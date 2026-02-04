@@ -61,6 +61,7 @@ void ai_scheduler_wait(ai_job_t* job) {
     }
 }
 
+#if 0
 static void ai_worker_loop(void* arg) {
     (void)arg;
     while (ai_scheduler_running) {
@@ -89,11 +90,12 @@ static void ai_worker_loop(void* arg) {
         }
     }
 }
+#endif
 
 void ai_scheduler_init(uint32_t n_workers) {
     ai_scheduler_running = 1;
     ai_worker_count = n_workers;
-    diag_log(DIAG_INFO, "AI Neural Scheduler starting with %d workers", n_workers);
+    diag_log(DIAG_INFO, "AI Neural Scheduler: Initializing workers...");
     
     // In a real implementation, we would spawn kernel threads here
     // For now, we assume this is called during SMP init
