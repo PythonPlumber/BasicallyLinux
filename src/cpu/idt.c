@@ -47,6 +47,7 @@ extern void irq6(void);
 extern void irq7(void);
 extern void irq8(void);
 extern void irq9(void);
+extern void idt_load(uint32_t);
 extern void irq10(void);
 extern void irq11(void);
 extern void irq12(void);
