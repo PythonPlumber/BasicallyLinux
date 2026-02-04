@@ -1,11 +1,9 @@
 cmake_minimum_required(VERSION 3.16)
-project(BasicallyLinux C ASM_NASM)
 
-# NASM flags for 32-bit ELF (Must be set before enable_language or forced)
+# Set NASM flags BEFORE the project() call to ensure they are used during initialization
 set(CMAKE_ASM_NASM_FLAGS "-f elf32" CACHE STRING "NASM flags" FORCE)
 
-# Enable NASM support
-enable_language(ASM_NASM)
+project(BasicallyLinux C ASM_NASM)
 
 # Toolchain configuration (can be overridden by command line)
 set(CMAKE_C_COMPILER i686-linux-gnu-gcc)
@@ -32,6 +30,11 @@ include_directories(include)
 # Source discovery
 file(GLOB_RECURSE ASM_SOURCES "src/*.asm")
 file(GLOB_RECURSE C_SOURCES "src/*.c")
+
+# Force -f elf32 on all assembly files explicitly as well
+foreach(asm_file ${ASM_SOURCES})
+    set_source_files_properties(${asm_file} PROPERTIES COMPILE_FLAGS "-f elf32")
+endforeach()
 
 # Exclude specific files if needed
 list(FILTER C_SOURCES EXCLUDE REGEX "src/drivers/vga.c")
