@@ -3,7 +3,7 @@ AS := nasm
 LD := i686-elf-gcc
 OBJCOPY := i686-elf-objcopy
 
-CFLAGS := -ffreestanding -O2 -Wall -Wextra -m32 -fno-pie -fno-stack-protector -nostdlib -nostdinc -Iinclude
+CFLAGS := -ffreestanding -O2 -Wall -Wextra -m32 -fno-pie -fno-stack-protector -nostdlib -nostdinc -Iinclude -msse -msse2
 ASFLAGS := -f elf32
 LDFLAGS := -T linker.ld -ffreestanding -O2 -nostdlib -Wl,--build-id=none
 
