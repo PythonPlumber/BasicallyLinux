@@ -1,5 +1,6 @@
 #include "acpi_power.h"
 #include "framebuffer.h"
+#include "heap.h"
 #include "idt.h"
 #include "power_plane.h"
 #include "sched.h"
@@ -10,6 +11,7 @@
 #include "timer.h"
 #include "trace_forge.h"
 #include "types.h"
+#include "util.h"
 #include "vfs.h"
 
 #define SYS_COPY_LIMIT 4096u

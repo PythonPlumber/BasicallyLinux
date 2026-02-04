@@ -7,7 +7,7 @@ static uint16_t* const vga_buffer = (uint16_t*)0xB8000;
 static const uint8_t vga_width = 80;
 static const uint8_t vga_height = 25;
 
-static void vga_clear(uint8_t color) {
+void vga_clear(uint8_t color) {
     uint16_t blank = (uint16_t)' ' | ((uint16_t)color << 8);
     for (uint32_t i = 0; i < (uint32_t)vga_width * vga_height; ++i) {
         vga_buffer[i] = blank;
