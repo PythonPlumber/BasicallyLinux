@@ -57,22 +57,30 @@ switch_to:
     ret
 
 %define PROC_ESP 36
+%define PROC_EBP 40
 
 context_switch:
-    mov eax, [esp+4]
-    mov edx, [esp+8]
-    mov ecx, [esp+12]
+    ; [esp+4] = previous process (process_t*)
+    ; [esp+8] = next process (process_t*)
+    ; [esp+12] = registers (registers_t*)
+    
+    mov eax, [esp+4]    ; eax = previous
+    mov edx, [esp+8]    ; edx = next
+    
     test eax, eax
     jz .load_next
-    mov [eax+PROC_ESP], ecx
+    
+    ; Save current ESP and EBP to previous task
+    mov [eax+PROC_ESP], esp
+    mov [eax+PROC_EBP], ebp
+    
 .load_next:
+    ; Switch to next task's ESP and EBP
     mov esp, [edx+PROC_ESP]
-    pop eax
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    popa
-    add esp, 8
-    sti
-    iret
+    mov ebp, [edx+PROC_EBP]
+    
+    ; Note: If this was called from irq0_handler, the 'esp' we just restored
+    ; points to a registers_t struct. The assembly stub in isr.s will 
+    ; then pop these registers and iret.
+    
+    ret

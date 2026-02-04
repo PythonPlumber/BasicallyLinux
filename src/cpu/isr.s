@@ -2,8 +2,6 @@
 
 extern isr_handler
 extern irq_handler
-global isr_handler
-global irq_handler
 
 %macro ISR_NOERR 1
 global isr%1
@@ -48,7 +46,7 @@ ISR_ERR 13
 ISR_ERR 14
 ISR_NOERR 15
 ISR_NOERR 16
-ISR_NOERR 17
+ISR_ERR 17
 ISR_NOERR 18
 ISR_NOERR 19
 ISR_NOERR 20
@@ -61,7 +59,7 @@ ISR_NOERR 26
 ISR_NOERR 27
 ISR_NOERR 28
 ISR_NOERR 29
-ISR_NOERR 30
+ISR_ERR 30
 ISR_NOERR 31
 ISR_NOERR 128
 
@@ -100,8 +98,7 @@ isr_common_stub:
     mov gs, ax
     push esp
     call isr_handler
-    add esp, 4
-    mov esp, eax
+    mov esp, eax    ; IMPORTANT: use the returned (potentially switched) stack pointer
 
     pop eax
     mov gs, ax
@@ -135,8 +132,7 @@ irq_common_stub:
     mov gs, ax
     push esp
     call irq_handler
-    add esp, 4
-    mov esp, eax
+    mov esp, eax    ; IMPORTANT: use the returned (potentially switched) stack pointer
 
     pop eax
     mov gs, ax
