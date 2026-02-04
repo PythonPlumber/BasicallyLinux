@@ -1,3 +1,5 @@
+[bits 32]
+
 section .multiboot
 align 4
     dd 0x1BADB002             ; Magic number

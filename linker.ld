@@ -2,13 +2,16 @@ ENTRY(_start)
 
 SECTIONS
 {
+    /* The kernel starts at 1MB */
     . = 1M;
-    kernel_start = .;
+
+    .multiboot BLOCK(4K) : ALIGN(4K)
+    {
+        KEEP(*(.multiboot))
+    }
 
     .text BLOCK(4K) : ALIGN(4K)
     {
-        /* MUST be at the very top of the binary */
-        KEEP(*(.multiboot))
         *(.text)
     }
 
