@@ -186,6 +186,11 @@ static registers_t* exception_handler(registers_t* regs) {
 }
 
 static registers_t* irq0_handler(registers_t* regs) {
+    static uint32_t ticks = 0;
+    ticks++;
+    if (ticks % 100 == 0) {
+        serial_write_string("T"); // T for Tick
+    }
     timer_handler();
     kswapd_tick();
     process_t* previous = 0;
@@ -220,6 +225,9 @@ void isr_init(void) {
 }
 
 registers_t* isr_handler(registers_t* regs) {
+    serial_write_string("DEBUG: ISR ");
+    serial_write_hex32(regs->int_no);
+    serial_write_string("\n");
     if (interrupt_handlers[regs->int_no]) {
         return interrupt_handlers[regs->int_no](regs);
     }
@@ -228,6 +236,7 @@ registers_t* isr_handler(registers_t* regs) {
 
 registers_t* irq_handler(registers_t* regs) {
     uint32_t int_no = regs->int_no;
+    // serial_write_string("I"); // Too noisy? Let's use it for now
     if (interrupt_handlers[int_no]) {
         regs = interrupt_handlers[int_no](regs);
     }

@@ -13,3 +13,7 @@ gdt_flush:
     jmp 0x08:flush_cs
 flush_cs:
     ret
+
+; Simple macro for serial debug in assembly if needed, 
+; but let's just use the segment load as proof of success.
+

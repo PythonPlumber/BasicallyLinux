@@ -11,7 +11,7 @@
 #define PAGE_PS 0x80
 
 static uint32_t page_directory[1024] __attribute__((aligned(4096)));
-static uint32_t page_tables[16][1024] __attribute__((aligned(4096)));
+static uint32_t page_tables[64][1024] __attribute__((aligned(4096)));
 static uint32_t page_table_count = 0;
 
 #define VM_PAGE_SIZE 4096u
@@ -23,7 +23,7 @@ static uint32_t shared_counts[SHARED_MAX];
 static uint32_t shared_refs[SHARED_MAX];
 
 static uint32_t* alloc_table(void) {
-    if (page_table_count >= 16) {
+    if (page_table_count >= 64) {
         return 0;
     }
     return page_tables[page_table_count++];
@@ -61,21 +61,28 @@ static uint32_t* get_table_dir(uint32_t* dir, uint32_t virtual_addr) {
 }
 
 void load_cr3(uint32_t* dir) {
+    serial_write_string("DEBUG: Loading CR3 with ");
+    serial_write_hex32((uint32_t)dir);
+    serial_write_string("\n");
     asm volatile("mov %0, %%cr3" : : "r"(dir));
 }
 
 void paging_enable(void) {
+    serial_write_string("DEBUG: paging_enable starting (setting CR0.PG)...\n");
     uint32_t cr0;
     asm volatile("mov %%cr0, %0" : "=r"(cr0));
     cr0 |= 0x80000000;
     asm volatile("mov %0, %%cr0" : : "r"(cr0));
+    serial_write_string("DEBUG: paging_enable finished!\n");
 }
 
 static void enable_pse(void) {
+    serial_write_string("DEBUG: Enabling PSE (CR4.PSE)...\n");
     uint32_t cr4;
     asm volatile("mov %%cr4, %0" : "=r"(cr4));
     cr4 |= 0x10;
     asm volatile("mov %0, %%cr4" : : "r"(cr4));
+    serial_write_string("DEBUG: PSE Enabled\n");
 }
 
 void map_page_dir(uint32_t* dir, uint32_t virtual_addr, uint32_t physical_addr, uint32_t flags) {
@@ -109,17 +116,24 @@ void map_page_4mb(uint32_t virtual_addr, uint32_t physical_addr, uint32_t flags)
 }
 
 void paging_init(void) {
+    serial_write_string("DEBUG: paging_init starting...\n");
     for (uint32_t i = 0; i < 1024; ++i) {
         page_directory[i] = PAGE_RW;
     }
+    serial_write_string("DEBUG: Directory zeroed\n");
 
-    for (uint32_t t = 0; t < 4; ++t) {
+    for (uint32_t t = 0; t < 16; ++t) { // Map 64MB (16 * 4MB)
         uint32_t* table = alloc_table();
+        if (!table) {
+            serial_write_string("ERROR: Failed to allocate initial page table!\n");
+            break;
+        }
         for (uint32_t i = 0; i < 1024; ++i) {
             table[i] = (t * 0x400000 + i * 0x1000) | PAGE_PRESENT | PAGE_RW;
         }
         page_directory[t] = ((uint32_t)table) | PAGE_PRESENT | PAGE_RW;
     }
+    serial_write_string("DEBUG: Identity mapping 64MB complete\n");
 
     // Identity map LAPIC and IOAPIC regions (0xFE000000 - 0xFFFFFFFF)
     // We use 4MB pages for simplicity since PSE is enabled
@@ -143,9 +157,13 @@ void paging_init(void) {
         }
     }
 
+    serial_write_string("DEBUG: Loading CR3...\n");
     load_cr3(page_directory);
+    serial_write_string("DEBUG: Enabling PSE...\n");
     enable_pse();
+    serial_write_string("DEBUG: Enabling Paging...\n");
     paging_enable();
+    serial_write_string("DEBUG: Paging fully enabled\n");
 }
 
 uint32_t* paging_get_directory(void) {
@@ -227,6 +245,14 @@ uint32_t* paging_create_directory(void) {
         return 0;
     }
     memset(dir, 0, 4096);
+    
+    // Copy the entire kernel/identity mapping (first 64MB + everything from VM_KERNEL_BASE)
+    // First 64MB (identity mapped for drivers/early boot)
+    for (uint32_t i = 0; i < 16; ++i) {
+        dir[i] = page_directory[i];
+    }
+    
+    // High memory mapping (from VM_KERNEL_BASE)
     uint32_t kernel_index = VM_KERNEL_BASE >> 22;
     for (uint32_t i = kernel_index; i < 1024; ++i) {
         dir[i] = page_directory[i];

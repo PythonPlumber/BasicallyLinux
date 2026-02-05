@@ -109,17 +109,26 @@ static void vga_write_at(const char* text, uint8_t color, uint8_t x, uint8_t y) 
 }
 
 static void wait_ticks(uint64_t ticks) {
+    if (ticks == 0) return;
     uint32_t eflags;
     asm volatile("pushf; pop %0" : "=r"(eflags));
     if (!(eflags & 0x200)) {
         // Interrupts are disabled, use a smaller busy loop to avoid hangs
-        for (uint64_t i = 0; i < ticks * 100000; ++i) {
-            asm volatile("nop");
+        // 1 tick @ 100Hz is 10ms. 1000000 NOPs is roughly a few ms on modern CPUs.
+        for (uint64_t i = 0; i < ticks * 1000000; ++i) {
+            asm volatile("pause"); // Use pause for better power/sync
         }
         return;
     }
     uint64_t start = timer_get_ticks();
-    while ((timer_get_ticks() - start) < ticks) { }
+    uint64_t timeout = 0;
+    while ((timer_get_ticks() - start) < ticks) { 
+        asm volatile("pause");
+        if (++timeout > 10000000) { // Safety break if timer never increments
+             serial_write_string("WARNING: wait_ticks safety break triggered!\n");
+             break;
+        }
+    }
 }
 
 static void typewriter_vga(const char* text, uint8_t color, uint8_t x, uint8_t y) {

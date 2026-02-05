@@ -62,6 +62,7 @@ static uint32_t console_color = 0xFFFFFF;
 static uint32_t console_x = 0;
 static uint32_t console_y = 0;
 static uint8_t console_use_vector = 0;
+static spinlock_t console_lock = 0;
 
 static uint16_t text_entry(uint8_t ch, uint8_t color) {
     return (uint16_t)ch | ((uint16_t)color << 8);
@@ -89,6 +90,7 @@ static uint32_t scrollback_tail_start(void) {
 }
 
 static void scrollback_render(void) {
+    serial_write_string("R"); // R for Render
     for (uint32_t row = 0; row < TEXT_ROWS; ++row) {
         uint32_t line_idx = (scrollback_view + row) % SCROLLBACK_LINES;
         uint16_t* dst = &text_buffer[row * TEXT_COLS];
@@ -293,8 +295,10 @@ void fb_console_set_color(uint32_t color) {
 }
 
 void fb_console_putc(char ch) {
+    spin_lock(&console_lock);
     if (ch == '\n') {
         console_newline();
+        spin_unlock(&console_lock);
         return;
     }
     if (ch == '\b') {
@@ -305,6 +309,7 @@ void fb_console_putc(char ch) {
                 scrollback[scrollback_head][text_x] = text_entry(' ', text_color);
                 scrollback_render();
             }
+            spin_unlock(&console_lock);
             return;
         }
         if (console_x >= font->width) {
@@ -315,6 +320,7 @@ void fb_console_putc(char ch) {
                 }
             }
         }
+        spin_unlock(&console_lock);
         return;
     }
     if (framebuffer.type == FB_TYPE_TEXT) {
@@ -332,6 +338,7 @@ void fb_console_putc(char ch) {
         } else {
             scrollback_render();
         }
+        spin_unlock(&console_lock);
         return;
     }
     uint32_t codepoint = (uint32_t)(uint8_t)ch;
@@ -344,6 +351,7 @@ void fb_console_putc(char ch) {
     if (console_x + font_bitmap_get()->width >= framebuffer.width) {
         console_newline();
     }
+    spin_unlock(&console_lock);
 }
 
 void fb_console_backspace(void) {
@@ -390,6 +398,9 @@ void fb_console_write_len(const char* text, uint32_t len) {
 }
 
 void fb_console_write(const char* text) {
+    serial_write_string("DEBUG: fb_console_write: ");
+    serial_write_string(text);
+    serial_write_string("\n");
     uint32_t index = 0;
     if (framebuffer.type == FB_TYPE_TEXT && scrollback_viewing) {
         scrollback_viewing = 0;

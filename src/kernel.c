@@ -263,34 +263,52 @@ static int acpi_rsdp_valid(const uint8_t* ptr) {
 }
 
 static void acpi_scan(void) {
+    serial_write_string("DEBUG: Scanning for ACPI RSDP (0xE0000 - 0x100000)...\n");
     acpi_rsdp_phys = 0;
     acpi_rsdt_phys = 0;
     acpi_rsdt_count = 0;
     for (uint32_t addr = 0xE0000; addr < 0x100000; addr += 16) {
+        if ((addr & 0xFFF) == 0) {
+            serial_write_string("."); // Progress marker
+        }
         const uint8_t* ptr = (const uint8_t*)addr;
         if (acpi_rsdp_valid(ptr)) {
             const acpi_rsdp_t* rsdp = (const acpi_rsdp_t*)ptr;
             acpi_rsdp_phys = addr;
             acpi_rsdt_phys = rsdp->rsdt_address;
+            serial_write_string("\nDEBUG: Found RSDP at ");
+            serial_write_hex32(addr);
+            serial_write_string(", RSDT at ");
+            serial_write_hex32(acpi_rsdt_phys);
+            serial_write_string("\n");
             break;
         }
     }
+    serial_write_string("\n");
     if (!acpi_rsdt_phys) {
+        serial_write_string("DEBUG: ACPI RSDT not found!\n");
         diag_log(DIAG_WARN, "acpi rsdt not found");
         return;
     }
+    serial_write_string("DEBUG: Validating RSDT signature...\n");
     const acpi_sdt_header_t* rsdt = (const acpi_sdt_header_t*)acpi_rsdt_phys;
     if (memcmp(rsdt->signature, "RSDT", 4) != 0) {
+        serial_write_string("DEBUG: ACPI RSDT signature invalid!\n");
         diag_log(DIAG_WARN, "acpi rsdt signature invalid");
         acpi_rsdt_phys = 0;
         return;
     }
+    serial_write_string("DEBUG: RSDT signature OK. Parsing entries...\n");
     if (rsdt->length < sizeof(acpi_sdt_header_t)) {
+        serial_write_string("DEBUG: ACPI RSDT length invalid!\n");
         diag_log(DIAG_WARN, "acpi rsdt length invalid");
         acpi_rsdt_phys = 0;
         return;
     }
     acpi_rsdt_count = (rsdt->length - sizeof(acpi_sdt_header_t)) / 4;
+    serial_write_string("DEBUG: ACPI RSDT parsed, count: ");
+    serial_write_hex32(acpi_rsdt_count);
+    serial_write_string("\n");
     diag_log_hex32(DIAG_INFO, "acpi rsdp", acpi_rsdp_phys);
     diag_log_hex32(DIAG_INFO, "acpi rsdt", acpi_rsdt_phys);
 }
@@ -330,50 +348,46 @@ uint32_t acpi_find_table(const char* signature) {
 }
 
 static void task_a(void) {
-    const char spin[] = "|/-\\";
-    uint32_t i = 0;
     for (;;) {
-        fb_console_putc(spin[i & 3]);
-        fb_console_putc('\b');
-        for (volatile uint32_t d = 0; d < 200000; ++d) { }
-        ++i;
+        serial_write_string("A");
+        fb_console_putc('A');
+        for (volatile uint32_t d = 0; d < 10000000; ++d) { }
     }
 }
 
 static void task_b(void) {
-    const char spin[] = "|/-\\";
-    uint32_t i = 0;
     for (;;) {
-        fb_console_putc(spin[i & 3]);
-        fb_console_putc('\b');
-        for (volatile uint32_t d = 0; d < 200000; ++d) { }
-        ++i;
+        serial_write_string("B");
+        fb_console_putc('B');
+        for (volatile uint32_t d = 0; d < 10000000; ++d) { }
     }
 }
 
 void kernel_main(unsigned int multiboot_magic, unsigned int multiboot_info_addr) {
     serial_init();
-    serial_write_string("\n\n--- KERNEL STARTING ---\n");
+    serial_write_string("K-ENTRY\n");
     
-    // Temporarily disable splash to troubleshoot hang
-    // vga_display_splash();
-    serial_write_string("DEBUG: Splash skipped\n");
-
-    serial_write_string("DEBUG: Multiboot Magic: 0x");
-    serial_write_hex32(multiboot_magic);
-    serial_write_string("\n");
-
+    uint16_t* vga_ptr = (uint16_t*)0xB8000;
+    vga_ptr[0] = 0x0F31; // '1'
+    
+    serial_write_string("DEBUG: GDT Init...\n");
     gdt_init();
-    serial_write_string("DEBUG: GDT Initialized\n");
+    vga_ptr[1] = 0x0F32; // '2'
+    serial_write_string("DEBUG: IDT Init...\n");
     idt_init();
-    serial_write_string("DEBUG: IDT Initialized\n");
+    vga_ptr[2] = 0x0F33; // '3'
+    serial_write_string("DEBUG: ISR Init...\n");
     isr_init();
-    serial_write_string("DEBUG: ISR Initialized\n");
+    vga_ptr[3] = 0x0F34; // '4'
     syscall_init();
     serial_write_string("DEBUG: Syscall Initialized\n");
+    vga_ptr[4] = 0x0F35; // '5'
     diag_init();
+    vga_ptr[5] = 0x0F36; // '6'
     serial_write_string("DEBUG: Diag Initialized\n");
     diag_log(DIAG_INFO, "boot start");
+
+    acpi_scan();
 
     multiboot_info_t* info = 0;
     uint32_t mem_bytes = 16u * 1024u * 1024u;
@@ -387,41 +401,33 @@ void kernel_main(unsigned int multiboot_magic, unsigned int multiboot_info_addr)
     serial_write_hex32(mem_bytes);
     serial_write_string(" bytes\n");
 
-    fb_init(info);
-    fb_clear(0);
-    fb_console_init(0xFFFFFF, 0);
-    fb_console_write("Kernel Loading...\n");
-    serial_write_string("DEBUG: Framebuffer Initialized Early\n");
-
-    if (mem_bytes > 0x100000) {
-        pmm_init(0x100000, mem_bytes - 0x100000);
-    diag_log_hex32(DIAG_INFO, "mem_bytes", mem_bytes);
-    serial_write_string("DEBUG: PMM Initialized\n");
-    fb_console_write("PMM Initialized\n");
-
-    pmm_reserve_region((uint32_t)&kernel_start, (uint32_t)&kernel_end - (uint32_t)&kernel_start);
-    if (info) {
-        pmm_reserve_region(align_down((uint32_t)info, 4096), align_up(sizeof(multiboot_info_t), 4096));
-        if (info->mods_count > 0) {
-            pmm_reserve_region(align_down(info->mods_addr, 4096), align_up(info->mods_count * sizeof(multiboot_module_t), 4096));
-            multiboot_module_t* module = (multiboot_module_t*)info->mods_addr;
-            for (uint32_t i = 0; i < info->mods_count; ++i) {
-                uint32_t start = module[i].mod_start;
-                uint32_t size = module[i].mod_end - module[i].mod_start;
-                pmm_reserve_region(start, size);
-            }
-        }
-    }
-    serial_write_string("DEBUG: Memory regions reserved\n");
-    fb_console_write("Memory Reserved\n");
-
-    acpi_scan();
-    serial_write_string("DEBUG: ACPI scan complete\n");
-    fb_console_write("ACPI Scanned\n");
-
+    serial_write_string("DEBUG: Starting Paging initialization...\n");
+    vga_ptr[6] = 0x0F37; // '7'
     paging_init();
+    vga_ptr[7] = 0x0F38; // '8'
     serial_write_string("DEBUG: Paging Initialized\n");
+    asm volatile("mov %cr3, %eax; mov %eax, %cr3"); // Flush TLB just in case
+    serial_write_string("DEBUG: CR3 Reloaded\n");
+
+    serial_write_string("DEBUG: Initializing Framebuffer...\n");
+    vga_ptr[8] = 0x0F39; // '9'
+    fb_init(info);
+    vga_ptr[9] = 0x0F41; // 'A'
+    serial_write_string("DEBUG: Framebuffer Initialized\n");
+    fb_clear(0);
+    vga_ptr[10] = 0x0F42; // 'B'
+    serial_write_string("DEBUG: Framebuffer Cleared\n");
+    fb_console_init(0xFFFFFF, 0);
+    serial_write_string("DEBUG: Console Initialized\n");
+    fb_console_write("Kernel Loading...\n");
     fb_console_write("Paging Initialized\n");
+    serial_write_string("DEBUG: First Console Writes Done\n");
+
+    // Direct VGA Hardware Test
+    uint16_t* vga = (uint16_t*)0xB8000;
+    vga[0] = 0x0F48; // 'H' white on black
+    vga[1] = 0x0F49; // 'I' white on black
+    serial_write_string("DEBUG: Direct VGA Test written to 0xB8000\n");
 
     serial_write_string("DEBUG: Initializing Interrupt Controller...\n");
     apex_intc_init();
@@ -434,50 +440,78 @@ void kernel_main(unsigned int multiboot_magic, unsigned int multiboot_info_addr)
 
     serial_write_string("DEBUG: Initializing Power Subsystems...\n");
     power_plane_init();
+    serial_write_string("DEBUG: Power Plane Initialized\n");
     acpi_power_init();
+    serial_write_string("DEBUG: ACPI Power Initialized\n");
     serial_write_string("DEBUG: Initializing Security...\n");
     secure_hard_init();
+    serial_write_string("DEBUG: Secure Hard Initialized\n");
     secure_policy_init();
+    serial_write_string("DEBUG: Secure Policy Initialized\n");
     secure_caps_init();
+    serial_write_string("DEBUG: Secure Caps Initialized\n");
     secure_audit_init();
+    serial_write_string("DEBUG: Secure Audit Initialized\n");
     serial_write_string("DEBUG: Initializing Trace/USB/PCIe/GFX...\n");
     trace_forge_init();
+    serial_write_string("DEBUG: Trace Forge Initialized\n");
     usb_nexus_init();
+    serial_write_string("DEBUG: USB Nexus Initialized\n");
     pcie_portshift_init();
+    serial_write_string("DEBUG: PCIe Portshift Initialized\n");
     gfx_forge_init();
+    serial_write_string("DEBUG: GFX Forge Initialized\n");
     serial_write_string("DEBUG: Initializing Input/DriverGrid/Net/Loader...\n");
     input_stream_init();
+    serial_write_string("DEBUG: Input Stream Initialized\n");
     driver_grid_init();
+    serial_write_string("DEBUG: Driver Grid Initialized\n");
     net_stack_init();
+    serial_write_string("DEBUG: Net Stack Initialized\n");
     dyn_loader_init();
+    serial_write_string("DEBUG: Dyn Loader Initialized\n");
     init_orch_init();
+    serial_write_string("DEBUG: Init Orch Initialized\n");
     serial_write_string("DEBUG: Initializing TTY/PTY/Devnodes...\n");
     tty_core_init();
+    serial_write_string("DEBUG: TTY Core Initialized\n");
     pty_mux_init();
+    serial_write_string("DEBUG: PTY Mux Initialized\n");
     devnodes_init();
+    serial_write_string("DEBUG: Devnodes Initialized\n");
     serial_write_string("DEBUG: Initializing View/Config...\n");
     proc_view_init();
+    serial_write_string("DEBUG: Proc View Initialized\n");
     sys_view_init();
+    serial_write_string("DEBUG: Sys View Initialized\n");
     sys_config_init();
+    serial_write_string("DEBUG: Sys Config Initialized\n");
     serial_write_string("DEBUG: Subsystems Initialized\n");
     fb_console_write("Subsystems Initialized\n");
 
+    serial_write_string("DEBUG: Checking SSE...\n");
     if (cpu_has_sse()) {
+        serial_write_string("DEBUG: Enabling SSE...\n");
         sse_enable();
         ai_set_simd_enabled(cpu_has_sse41());
     } else {
+        serial_write_string("DEBUG: SSE not available\n");
         ai_set_simd_enabled(0);
     }
+    serial_write_string("DEBUG: Initializing AI Model...\n");
     ai_model_init();
     serial_write_string("DEBUG: AI Model Initialized\n");
     fb_console_write("AI Model Initialized\n");
 
+    serial_write_string("DEBUG: Initializing Heap/Slab...\n");
     heap_init();
     slab_init();
+    serial_write_string("DEBUG: Initializing kswapd...\n");
     kswapd_init();
     serial_write_string("DEBUG: Memory Management (Heap/Slab) Initialized\n");
     fb_console_write("Heap/Slab Initialized\n");
 
+    serial_write_string("DEBUG: Initializing NUMA/IPC/IO/Journal/Cache/FS...\n");
     numa_init(get_ram_size());
     ipc_init();
     io_sched_init();
@@ -492,32 +526,45 @@ void kernel_main(unsigned int multiboot_magic, unsigned int multiboot_info_addr)
     serial_write_string("DEBUG: FS/IPC/Jobs Initialized\n");
     fb_console_write("FS/IPC/Jobs Initialized\n");
 
+    serial_write_string("DEBUG: Initializing VFS...\n");
     vfs_init();
     serial_write_string("DEBUG: VFS Initialized\n");
     fb_console_write("VFS Initialized\n");
 
+    serial_write_string("DEBUG: Checking for Ramdisk modules...\n");
     if (info && info->mods_count > 0) {
+        serial_write_string("DEBUG: Initializing Ramdisk...\n");
         multiboot_module_t* module = (multiboot_module_t*)info->mods_addr;
         uint32_t size = module->mod_end - module->mod_start;
         vfs_set_root(ramdisk_init(module->mod_start, size));
+        serial_write_string("DEBUG: Ramdisk mounted\n");
+        fb_console_write("Ramdisk Mounted\n");
+    } else {
+        serial_write_string("DEBUG: No Ramdisk modules found\n");
     }
-    serial_write_string("DEBUG: Ramdisk mounted\n");
-    fb_console_write("Ramdisk Mounted\n");
 
+    serial_write_string("DEBUG: Initializing Scheduler...\n");
     scheduler_init();
     serial_write_string("DEBUG: Scheduler Initialized\n");
     fb_console_write("Scheduler Initialized\n");
-    process_create(task_a, 0);
-    serial_write_string("DEBUG: Task A created\n");
-    process_create(task_b, 0);
-    serial_write_string("DEBUG: Task B created\n");
+
+    serial_write_string("DEBUG: Initializing PIT...\n");
     pit_init(100);
-    serial_write_string("DEBUG: PIT Initialized (100Hz)\n");
+    serial_write_string("DEBUG: PIT Initialized\n");
     fb_console_write("PIT Initialized\n");
+
+    serial_write_string("DEBUG: Creating tasks...\n");
+    process_create(task_a, "task_a");
+    serial_write_string("DEBUG: Task A Created\n");
+    process_create(task_b, "task_b");
+    serial_write_string("DEBUG: Task B Created\n");
+    fb_console_write("Tasks Created\n");
     
     fb_console_write("Shell Initializing...\n");
+    serial_write_string("DEBUG: Initializing Keyboard...\n");
     keyboard_init();
     keyboard_set_callback(shell_on_input);
+    serial_write_string("DEBUG: Initializing Shell...\n");
     shell_init();
     serial_write_string("DEBUG: Shell Initialized\n");
     fb_console_write("Shell Initialized\n");

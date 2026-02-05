@@ -785,9 +785,18 @@ int ai_matmul_q16_16(const q16_16_t* a, const q16_16_t* b, q16_16_t* c, uint32_t
 }
 
 void ai_model_init(void) {
+    serial_write_string("DEBUG: ai_model_init starting...\n");
     uint32_t phys_start = (uint32_t)&_ai_model_start;
     uint32_t phys_end = (uint32_t)&_ai_model_end;
+    
+    serial_write_string("DEBUG: AI Model range: ");
+    serial_write_hex32(phys_start);
+    serial_write_string(" - ");
+    serial_write_hex32(phys_end);
+    serial_write_string("\n");
+
     if (phys_end <= phys_start) {
+        serial_write_string("DEBUG: AI Model not found (size 0)\n");
         ai_mapped_base = 0;
         ai_mapped_size = 0;
         return;
@@ -797,20 +806,30 @@ void ai_model_init(void) {
     uint32_t offset = phys_start - aligned_phys;
     uint32_t total = offset + size;
     uint32_t page_count = (total + 0x3FFFFF) >> 22;
+    
+    serial_write_string("DEBUG: Mapping AI Model pages: ");
+    serial_write_hex32(page_count);
+    serial_write_string("\n");
+
     for (uint32_t i = 0; i < page_count; ++i) {
+        if ((i % 10) == 0) serial_write_string(".");
         map_page_4mb(AI_MODEL_VIRT_BASE + (i << 22), aligned_phys + (i << 22), 0x3);
     }
+    serial_write_string("\nDEBUG: AI Model pages mapped\n");
+
     ai_mapped_base = (uint8_t*)(AI_MODEL_VIRT_BASE + offset);
     ai_mapped_size = size;
 
+    serial_write_string("DEBUG: Reading GGUF header...\n");
     gguf_header_t header;
     if (gguf_read_header(ai_mapped_base, &header)) {
-        serial_write("GGUF OK\n");
+        serial_write_string("DEBUG: GGUF OK\n");
         diag_log(DIAG_INFO, "gguf header ok");
     } else {
-        serial_write("GGUF BAD\n");
+        serial_write_string("DEBUG: GGUF BAD\n");
         diag_log(DIAG_ERROR, "gguf header invalid");
     }
+    serial_write_string("DEBUG: ai_model_init finished\n");
 }
 
 static int contains_word(const char* text, const char* word) {

@@ -31,12 +31,18 @@ typedef struct {
 static runqueue_t runqueues[MAX_CPUS];
 
 static inline uint32_t get_cpu_id(void) {
+    // Check if LAPIC is enabled and present
+    // For now, return 0 for safety in early boot/single CPU
+    return 0;
+    
     // Read LAPIC ID (bits 24-31)
     // We assume LAPIC is mapped at default address
+    /*
     if ((*(volatile uint32_t*)(LAPIC_BASE + LAPIC_SVR)) & 0x100) {
         return (*(volatile uint32_t*)(LAPIC_BASE + LAPIC_ID)) >> 24;
     }
     return 0;
+    */
 }
 
 // Global runqueue lock
@@ -629,6 +635,7 @@ static process_t* scheduler_pick_best_ready(void) {
 }
 
 process_t* switch_task(registers_t* saved_stack, process_t** previous) {
+    serial_write_string("S"); // S for switch
     spin_lock(&sched_lock);
     
     uint32_t cpu = get_cpu_id();
@@ -641,6 +648,9 @@ process_t* switch_task(registers_t* saved_stack, process_t** previous) {
     if (!current) {
         process_t* best = scheduler_pick_best_ready();
         if (best) {
+            serial_write_string("DEBUG: Initial switch to PID ");
+            serial_write_hex32(best->pid);
+            serial_write_string("\n");
             dequeue_task(best);
             current_process[cpu] = best;
             best->state = PROCESS_RUNNING;
@@ -731,6 +741,17 @@ process_t* switch_task(registers_t* saved_stack, process_t** previous) {
         // Idle?
         spin_unlock(&sched_lock);
         return current;
+    }
+
+    if (best != current) {
+        serial_write_string("DEBUG: Switching PID ");
+        serial_write_hex32(current->pid);
+        serial_write_string(" -> ");
+        serial_write_hex32(best->pid);
+        serial_write_string("\n");
+        // serial_write_string("DEBUG: Switching to process: ");
+        // serial_write_string(best->name);
+        // serial_write_string("\n");
     }
 
     dequeue_task(best);
