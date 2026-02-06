@@ -1,7 +1,6 @@
 [bits 32]
 
-extern isr_handler
-extern irq_handler
+extern x86_interrupt_handler
 
 %macro ISR_NOERR 1
 global isr%1
@@ -9,7 +8,7 @@ isr%1:
     cli
     push dword 0
     push dword %1
-    jmp isr_common_stub
+    jmp interrupt_common_stub
 %endmacro
 
 %macro ISR_ERR 1
@@ -17,7 +16,7 @@ global isr%1
 isr%1:
     cli
     push dword %1
-    jmp isr_common_stub
+    jmp interrupt_common_stub
 %endmacro
 
 %macro IRQ 2
@@ -26,9 +25,10 @@ irq%1:
     cli
     push dword 0
     push dword %2
-    jmp irq_common_stub
+    jmp interrupt_common_stub
 %endmacro
 
+; ... (rest of the macros and vector definitions) ...
 ISR_NOERR 0
 ISR_NOERR 1
 ISR_NOERR 2
@@ -80,7 +80,7 @@ IRQ 13, 45
 IRQ 14, 46
 IRQ 15, 47
 
-isr_common_stub:
+interrupt_common_stub:
     pusha
     mov ax, ds
     push eax
@@ -97,40 +97,7 @@ isr_common_stub:
     mov fs, ax
     mov gs, ax
     push esp
-    call isr_handler
-    mov esp, eax    ; IMPORTANT: use the returned (potentially switched) stack pointer
-
-    pop eax
-    mov gs, ax
-    pop eax
-    mov fs, ax
-    pop eax
-    mov es, ax
-    pop eax
-    mov ds, ax
-
-    popa
-    add esp, 8
-    iret
-
-irq_common_stub:
-    pusha
-    mov ax, ds
-    push eax
-    mov ax, es
-    push eax
-    mov ax, fs
-    push eax
-    mov ax, gs
-    push eax
-
-    mov ax, 0x10
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    push esp
-    call irq_handler
+    call x86_interrupt_handler
     mov esp, eax    ; IMPORTANT: use the returned (potentially switched) stack pointer
 
     pop eax

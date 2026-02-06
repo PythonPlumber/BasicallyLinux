@@ -1,5 +1,4 @@
 #include "framebuffer.h"
-#include "idt.h"
 #include "types.h"
 #include "vga.h"
 

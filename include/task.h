@@ -2,7 +2,7 @@
 #define TASK_H
 
 #include "types.h"
-#include "idt.h"
+#include "cpu.h"
 
 typedef struct {
     uint32_t eax, ebx, ecx, edx, esi, edi;

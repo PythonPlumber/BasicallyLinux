@@ -47,3 +47,15 @@ void spin_lock(spinlock_t* lock) {
 void spin_unlock(spinlock_t* lock) {
     __sync_lock_release(lock);
 }
+
+uint32_t spin_lock_irqsave(spinlock_t* lock) {
+    uint32_t flags;
+    asm volatile("pushfl; popl %0; cli" : "=r"(flags) : : "memory");
+    spin_lock(lock);
+    return flags;
+}
+
+void spin_unlock_irqrestore(spinlock_t* lock, uint32_t flags) {
+    spin_unlock(lock);
+    asm volatile("pushl %0; popfl" : : "r"(flags) : "memory", "cc");
+}

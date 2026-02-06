@@ -1,13 +1,14 @@
 #include "acpi_power.h"
 #include "framebuffer.h"
 #include "heap.h"
-#include "idt.h"
+#include "cpu.h"
 #include "power_plane.h"
 #include "sched.h"
 #include "secure_audit.h"
 #include "secure_caps.h"
 #include "secure_policy.h"
 #include "syscall.h"
+#include "interrupts.h"
 #include "timer.h"
 #include "trace_forge.h"
 #include "types.h"
@@ -483,5 +484,5 @@ static registers_t* syscall_handler(registers_t* regs) {
 }
 
 void syscall_init(void) {
-    register_interrupt_handler(128, syscall_handler);
+    interrupts_register_handler(128, syscall_handler);
 }

@@ -87,6 +87,10 @@ void idt_set_gate(uint8_t num, uint32_t base, uint16_t selector, uint8_t type, u
     idt_entries[num].offset_high = (uint16_t)((base >> 16) & 0xFFFF);
 }
 
+void idt_load_current(void) {
+    idt_load((uint32_t)&idt_ptr);
+}
+
 void idt_init(void) {
     idt_ptr.limit = (uint16_t)(sizeof(idt_entry_t) * 256 - 1);
     idt_ptr.base = (uint32_t)&idt_entries;
@@ -148,5 +152,5 @@ void idt_init(void) {
     idt_set_gate(47, (uint32_t)irq15, 0x08, 0x0E, 0, 1);
     idt_set_gate(128, (uint32_t)isr128, 0x08, 0x0E, 3, 1);
 
-    idt_load((uint32_t)&idt_ptr);
+    idt_load_current();
 }

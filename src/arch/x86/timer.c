@@ -21,3 +21,17 @@ void timer_handler(void) {
 void timer_init(void) {
     pit_init(100);
 }
+
+void timer_wait_ticks(uint64_t ticks) {
+    uint64_t end = global_ticks + ticks;
+    while (global_ticks < end) {
+        asm volatile("pause");
+    }
+}
+
+void timer_sleep(uint32_t ms) {
+    // 100Hz = 10ms per tick
+    uint64_t ticks = ms / 10;
+    if (ticks == 0 && ms > 0) ticks = 1;
+    timer_wait_ticks(ticks);
+}

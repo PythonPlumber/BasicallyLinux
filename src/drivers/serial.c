@@ -1,8 +1,11 @@
 #include "serial.h"
 #include "ports.h"
 #include "types.h"
+#include "util.h"
 
 #define COM1 0x3F8
+
+static spinlock_t serial_lock = 0;
 
 static int serial_ready(void) {
     return (inb(COM1 + 5) & 0x20) != 0;
@@ -24,6 +27,7 @@ static void serial_write_char(char c) {
 }
 
 void serial_write(const char* text) {
+    uint32_t flags = spin_lock_irqsave(&serial_lock);
     uint32_t i = 0;
     while (text[i]) {
         if (text[i] == '\n') {
@@ -32,6 +36,7 @@ void serial_write(const char* text) {
         serial_write_char(text[i]);
         ++i;
     }
+    spin_unlock_irqrestore(&serial_lock, flags);
 }
 
 void serial_write_string(const char* text) {
@@ -39,12 +44,14 @@ void serial_write_string(const char* text) {
 }
 
 void serial_write_len(const char* text, uint32_t len) {
+    uint32_t flags = spin_lock_irqsave(&serial_lock);
     for (uint32_t i = 0; i < len; ++i) {
         if (text[i] == '\n') {
             serial_write_char('\r');
         }
         serial_write_char(text[i]);
     }
+    spin_unlock_irqrestore(&serial_lock, flags);
 }
 
 void serial_write_hex32(uint32_t value) {

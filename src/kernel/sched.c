@@ -2,24 +2,18 @@
 #include "sched.h"
 #include "secure_caps.h"
 #include "signal.h"
-#include "smp_rally.h"
+#include "smp.h"
 #include "timer.h"
 #include "types.h"
 #include "vm_space.h"
 #include "heap.h"
 #include "util.h"
 #include "elf_loader.h"
+#include "cpu.h"
 
 #define STACK_SIZE 4096
 #define MAX_PRIORITY_BOOST 8
 #define MAX_CPUS 4
-
-#define LAPIC_BASE 0xFEE00000
-#define LAPIC_ID   0x0020
-#define LAPIC_VER  0x0030
-#define LAPIC_TPR  0x0080
-#define LAPIC_EOI  0x00B0
-#define LAPIC_SVR  0x00F0
 
 typedef struct {
     process_t* head;
@@ -29,21 +23,6 @@ typedef struct {
 } runqueue_t;
 
 static runqueue_t runqueues[MAX_CPUS];
-
-static inline uint32_t get_cpu_id(void) {
-    // Check if LAPIC is enabled and present
-    // For now, return 0 for safety in early boot/single CPU
-    return 0;
-    
-    // Read LAPIC ID (bits 24-31)
-    // We assume LAPIC is mapped at default address
-    /*
-    if ((*(volatile uint32_t*)(LAPIC_BASE + LAPIC_SVR)) & 0x100) {
-        return (*(volatile uint32_t*)(LAPIC_BASE + LAPIC_ID)) >> 24;
-    }
-    return 0;
-    */
-}
 
 // Global runqueue lock
 static spinlock_t sched_lock = 0;
@@ -59,7 +38,7 @@ static uint32_t default_priority = 10;
 static uint32_t default_time_slice = 4;
 
 process_t* scheduler_current(void) {
-    return current_process[get_cpu_id()];
+    return current_process[cpu_get_id()];
 }
 
 process_t* scheduler_process_list(void) {
@@ -108,7 +87,7 @@ static void list_append(process_t* proc) {
 static void enqueue_task(process_t* proc) {
     uint32_t best_cpu = 0;
     uint32_t min_count = 0xFFFFFFFF;
-    uint32_t online = smp_rally_online_mask();
+    uint32_t online = smp_get_online_mask();
     
     // Find best CPU among online ones in mask
     for (uint32_t i = 0; i < MAX_CPUS; i++) {
@@ -186,10 +165,10 @@ static process_t* find_process_by_pid(uint32_t pid) {
 }
 
 int scheduler_kill(uint32_t pid) {
-    spin_lock(&sched_lock);
+    uint32_t flags = spin_lock_irqsave(&sched_lock);
     process_t* proc = find_process_by_pid(pid);
     if (!proc) {
-        spin_unlock(&sched_lock);
+        spin_unlock_irqrestore(&sched_lock, flags);
         return 0;
     }
     
@@ -203,14 +182,7 @@ int scheduler_kill(uint32_t pid) {
     proc->exited = 1;
     proc->exit_code = -1; // Killed
     
-    // Clean up resources if needed immediately, or let parent wait()
-    // For now, we just mark it as zombie/blocked
-    
-    // If we killed the current process, we must schedule soon.
-    // But we can't switch here inside lock easily without care.
-    // The timer tick will pick up the change.
-    
-    spin_unlock(&sched_lock);
+    spin_unlock_irqrestore(&sched_lock, flags);
     return 1;
 }
 
@@ -229,13 +201,13 @@ void scheduler_init(void) {
 }
 
 static process_t* process_create_ex(void (*entry)(void), uint32_t* page_directory, int start_immediately) {
-    spin_lock(&sched_lock);
+    uint32_t flags = spin_lock_irqsave(&sched_lock);
     
     uint32_t pid = process_count++; // Simple PID alloc
     
     process_t* proc = (process_t*)kmalloc(sizeof(process_t));
     if (!proc) {
-        spin_unlock(&sched_lock);
+        spin_unlock_irqrestore(&sched_lock, flags);
         return 0;
     }
     memset(proc, 0, sizeof(process_t));
@@ -243,7 +215,7 @@ static process_t* process_create_ex(void (*entry)(void), uint32_t* page_director
     void* stack_ptr = kmalloc(STACK_SIZE);
     if (!stack_ptr) {
         kfree(proc);
-        spin_unlock(&sched_lock);
+        spin_unlock_irqrestore(&sched_lock, flags);
         return 0;
     }
     proc->kernel_stack = stack_ptr;
@@ -315,7 +287,7 @@ static process_t* process_create_ex(void (*entry)(void), uint32_t* page_director
         enqueue_task(proc);
     }
     
-    spin_unlock(&sched_lock);
+    spin_unlock_irqrestore(&sched_lock, flags);
     return proc;
 }
 
@@ -324,16 +296,16 @@ process_t* process_create(void (*entry)(void), uint32_t* page_directory) {
 }
 
 void scheduler_set_priority(uint32_t pid, uint32_t priority) {
-    spin_lock(&sched_lock);
+    uint32_t flags = spin_lock_irqsave(&sched_lock);
     process_t* proc = find_process_by_pid(pid);
     if (proc) {
         proc->priority = priority;
     }
-    spin_unlock(&sched_lock);
+    spin_unlock_irqrestore(&sched_lock, flags);
 }
 
 void scheduler_set_timeslice(uint32_t pid, uint32_t ticks) {
-    spin_lock(&sched_lock);
+    uint32_t flags = spin_lock_irqsave(&sched_lock);
     process_t* proc = find_process_by_pid(pid);
     if (proc) {
         if (ticks == 0) ticks = 1;
@@ -342,39 +314,39 @@ void scheduler_set_timeslice(uint32_t pid, uint32_t ticks) {
             proc->time_remaining = ticks;
         }
     }
-    spin_unlock(&sched_lock);
+    spin_unlock_irqrestore(&sched_lock, flags);
 }
 
 void scheduler_set_class(uint32_t pid, uint32_t sched_class) {
-    spin_lock(&sched_lock);
+    uint32_t flags = spin_lock_irqsave(&sched_lock);
     process_t* proc = find_process_by_pid(pid);
     if (proc) {
         proc->sched_class = sched_class;
     }
-    spin_unlock(&sched_lock);
+    spin_unlock_irqrestore(&sched_lock, flags);
 }
 
 void scheduler_set_affinity(uint32_t pid, uint32_t cpu_mask) {
-    spin_lock(&sched_lock);
+    uint32_t flags = spin_lock_irqsave(&sched_lock);
     process_t* proc = find_process_by_pid(pid);
     if (proc) {
         proc->cpu_mask = cpu_mask;
     }
-    spin_unlock(&sched_lock);
+    spin_unlock_irqrestore(&sched_lock, flags);
 }
 
 void scheduler_set_cgroup(uint32_t pid, uint32_t cgroup_id, uint32_t share) {
-    spin_lock(&sched_lock);
+    uint32_t flags = spin_lock_irqsave(&sched_lock);
     process_t* proc = find_process_by_pid(pid);
     if (proc) {
         proc->cgroup_id = cgroup_id;
         proc->cgroup_share = share == 0 ? 1 : share;
     }
-    spin_unlock(&sched_lock);
+    spin_unlock_irqrestore(&sched_lock, flags);
 }
 
 void scheduler_set_rt(uint32_t pid, uint32_t priority, uint64_t budget, uint64_t period) {
-    spin_lock(&sched_lock);
+    uint32_t flags = spin_lock_irqsave(&sched_lock);
     process_t* proc = find_process_by_pid(pid);
     if (proc) {
         proc->priority = priority;
@@ -385,11 +357,11 @@ void scheduler_set_rt(uint32_t pid, uint32_t priority, uint64_t budget, uint64_t
         proc->rt_runtime = 0;
         proc->rt_release = timer_get_ticks();
     }
-    spin_unlock(&sched_lock);
+    spin_unlock_irqrestore(&sched_lock, flags);
 }
 
 void scheduler_set_deadline(uint32_t pid, uint64_t budget, uint64_t period, uint64_t deadline) {
-    spin_lock(&sched_lock);
+    uint32_t flags = spin_lock_irqsave(&sched_lock);
     process_t* proc = find_process_by_pid(pid);
     if (proc) {
         proc->sched_class = SCHED_CLASS_DEADLINE;
@@ -399,7 +371,7 @@ void scheduler_set_deadline(uint32_t pid, uint64_t budget, uint64_t period, uint
         proc->rt_runtime = 0;
         proc->rt_release = timer_get_ticks();
     }
-    spin_unlock(&sched_lock);
+    spin_unlock_irqrestore(&sched_lock, flags);
 }
 
 void scheduler_sleep(uint64_t ticks) {
@@ -455,6 +427,25 @@ void scheduler_yield(void) {
     asm volatile("int $0x20"); // Assuming timer vector, or just wait for tick
 }
 
+void scheduler_loop(void) {
+    for (;;) {
+        asm volatile("cli");
+        process_t* best = scheduler_pick_best_ready();
+        if (!best) {
+            scheduler_balance_load();
+            best = scheduler_pick_best_ready();
+        }
+        
+        if (best) {
+            // Trigger a context switch via interrupt
+            asm volatile("int $0x20");
+        }
+        
+        asm volatile("sti");
+        asm volatile("hlt");
+    }
+}
+
 static void scheduler_wake_sleepers(uint64_t now) {
     if (!process_list) return;
     process_t* it = process_list;
@@ -505,7 +496,7 @@ static void scheduler_account_tick(void) {
 }
 
 void scheduler_balance_load(void) {
-    uint32_t this_cpu = get_cpu_id();
+    uint32_t this_cpu = cpu_get_id();
     runqueue_t* this_rq = &runqueues[this_cpu];
     
     // Only balance if we are empty
@@ -513,7 +504,7 @@ void scheduler_balance_load(void) {
     
     uint32_t busiest_cpu = this_cpu;
     uint32_t max_count = 0;
-    uint32_t online = smp_rally_online_mask();
+    uint32_t online = smp_get_online_mask();
     
     for (uint32_t i = 0; i < MAX_CPUS; i++) {
         if ((online & (1 << i)) && runqueues[i].count > max_count) {
@@ -530,33 +521,50 @@ void scheduler_balance_load(void) {
     uint32_t id1 = (this_cpu < busiest_cpu) ? this_cpu : busiest_cpu;
     uint32_t id2 = (this_cpu < busiest_cpu) ? busiest_cpu : this_cpu;
     
-    spin_lock(&runqueues[id1].lock);
+    uint32_t flags = spin_lock_irqsave(&runqueues[id1].lock);
     if (id1 != id2) spin_lock(&runqueues[id2].lock);
     
-    // Try to steal from head for O(1)
+    // Try to find a victim in the remote queue
+    process_t* prev = 0;
     process_t* victim = remote_rq->head;
-    if (victim && victim->state == PROCESS_READY && (victim->cpu_mask & (1 << this_cpu))) {
-        // Steal it
-        remote_rq->head = victim->run_next;
-        if (!remote_rq->head) remote_rq->tail = 0;
-        remote_rq->count--;
-        
-        // Add to local
-        victim->run_next = 0;
-        victim->current_cpu = this_cpu;
-        
-        if (!this_rq->head) {
-            this_rq->head = victim;
-            this_rq->tail = victim;
-        } else {
-            this_rq->tail->run_next = victim;
-            this_rq->tail = victim;
+    
+    while (victim) {
+        if (victim->state == PROCESS_READY && (victim->cpu_mask & (1 << this_cpu))) {
+            // Found a victim!
+            if (prev) {
+                prev->run_next = victim->run_next;
+            } else {
+                remote_rq->head = victim->run_next;
+            }
+            
+            if (remote_rq->tail == victim) {
+                remote_rq->tail = prev;
+            }
+            
+            remote_rq->count--;
+            
+            // Add to local
+            victim->run_next = 0;
+            victim->current_cpu = this_cpu;
+            
+            if (!this_rq->head) {
+                this_rq->head = victim;
+                this_rq->tail = victim;
+            } else {
+                this_rq->tail->run_next = victim;
+                this_rq->tail = victim;
+            }
+            this_rq->count++;
+            
+            // For now, just steal one to keep it simple and fast
+            break;
         }
-        this_rq->count++;
+        prev = victim;
+        victim = victim->run_next;
     }
     
     if (id1 != id2) spin_unlock(&runqueues[id2].lock);
-    spin_unlock(&runqueues[id1].lock);
+    spin_unlock_irqrestore(&runqueues[id1].lock, flags);
 }
 
 static uint32_t scheduler_effective_priority(const process_t* proc) {
@@ -568,13 +576,13 @@ static uint32_t scheduler_effective_priority(const process_t* proc) {
 }
 
 static process_t* scheduler_pick_best_ready(void) {
-    uint32_t cpu = get_cpu_id();
+    uint32_t cpu = cpu_get_id();
     runqueue_t* rq = &runqueues[cpu];
     
-    spin_lock(&rq->lock);
+    uint32_t flags = spin_lock_irqsave(&rq->lock);
     
     if (!rq->head) {
-        spin_unlock(&rq->lock);
+        spin_unlock_irqrestore(&rq->lock, flags);
         return 0;
     }
     
@@ -629,16 +637,16 @@ static process_t* scheduler_pick_best_ready(void) {
         it = it->run_next;
     }
     
-    spin_unlock(&rq->lock);
+    spin_unlock_irqrestore(&rq->lock, flags);
     
     return best;
 }
 
 process_t* switch_task(registers_t* saved_stack, process_t** previous) {
     serial_write_string("S"); // S for switch
-    spin_lock(&sched_lock);
+    uint32_t flags = spin_lock_irqsave(&sched_lock);
     
-    uint32_t cpu = get_cpu_id();
+    uint32_t cpu = cpu_get_id();
     process_t* current = current_process[cpu];
     
     uint64_t now = timer_get_ticks();
@@ -656,17 +664,17 @@ process_t* switch_task(registers_t* saved_stack, process_t** previous) {
             best->state = PROCESS_RUNNING;
             best->time_remaining = best->time_slice;
             if (previous) *previous = 0;
-            spin_unlock(&sched_lock);
+            spin_unlock_irqrestore(&sched_lock, flags);
             return best;
         }
         if (previous) *previous = 0;
-        spin_unlock(&sched_lock);
+        spin_unlock_irqrestore(&sched_lock, flags);
         return 0;
     }
 
     if (!process_list) {
         if (previous) *previous = current;
-        spin_unlock(&sched_lock);
+        spin_unlock_irqrestore(&sched_lock, flags);
         return current;
     }
 
@@ -724,7 +732,7 @@ process_t* switch_task(registers_t* saved_stack, process_t** previous) {
             }
             
             if (!switch_needed) {
-                spin_unlock(&sched_lock);
+                spin_unlock_irqrestore(&sched_lock, flags);
                 return current;
             }
         } else {
@@ -739,7 +747,7 @@ process_t* switch_task(registers_t* saved_stack, process_t** previous) {
 
     if (!best) {
         // Idle?
-        spin_unlock(&sched_lock);
+        spin_unlock_irqrestore(&sched_lock, flags);
         return current;
     }
 
@@ -762,7 +770,7 @@ process_t* switch_task(registers_t* saved_stack, process_t** previous) {
     best->ready_ticks = 0;
     best->switches++;
 
-    spin_unlock(&sched_lock);
+    spin_unlock_irqrestore(&sched_lock, flags);
     return best;
 }
 
@@ -774,7 +782,7 @@ process_t* process_fork(process_t* parent, registers_t* regs) {
     process_t* child = process_create_ex((void (*)(void))regs->eip, 0, 0);
     if (!child) return 0;
     
-    spin_lock(&sched_lock);
+    uint32_t flags = spin_lock_irqsave(&sched_lock);
     
     child->parent_pid = parent->pid;
     child->priority = parent->priority;
@@ -805,7 +813,7 @@ process_t* process_fork(process_t* parent, registers_t* regs) {
         // Failed to clone memory
         if (child->kernel_stack) kfree(child->kernel_stack);
         kfree(child);
-        spin_unlock(&sched_lock);
+        spin_unlock_irqrestore(&sched_lock, flags);
         return 0;
     }
     
@@ -828,7 +836,7 @@ process_t* process_fork(process_t* parent, registers_t* regs) {
     child->time_remaining = child->time_slice;
     enqueue_task(child);
     
-    spin_unlock(&sched_lock);
+    spin_unlock_irqrestore(&sched_lock, flags);
     return child;
 }
 

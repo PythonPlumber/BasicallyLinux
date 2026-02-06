@@ -1,7 +1,6 @@
 #include "types.h"
 #include "keyboard.h"
-#include "idt.h"
-#include "ports.h"
+#include "interrupts.h"
 
 #define KEYBOARD_BUFFER_SIZE 128
 
@@ -150,7 +149,6 @@ void keyboard_init(void) {
     key_head = 0;
     key_tail = 0;
     key_callback = 0;
-    register_interrupt_handler(33, keyboard_irq);
-    uint8_t mask = inb(0x21);
-    outb(0x21, (uint8_t)(mask & 0xFD));
+    interrupts_register_handler(33, keyboard_irq);
+    interrupts_enable_irq(1);
 }

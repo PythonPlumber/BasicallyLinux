@@ -65,7 +65,18 @@ int vm_map_user_guarded(process_t* proc, uint32_t start, uint32_t size, uint32_t
         return 0;
     }
     uint32_t guard_before = start - guard_size;
+    
+    // Check for overflow: start + size
+    if (start > 0xFFFFFFFFu - size) {
+        return 0;
+    }
     uint32_t guard_after = start + size;
+    
+    // Check for overflow: guard_after + guard_size
+    if (guard_after > 0xFFFFFFFFu - guard_size) {
+        return 0;
+    }
+
     if (!vm_map_region(proc, guard_before, guard_size, VM_GUARD | VM_USER)) {
         return 0;
     }

@@ -3,13 +3,16 @@
 
 #include "types.h"
 
-unsigned int strlen(const char* s);
-void* memcpy(void* dest, const void* src, unsigned int n);
-void* memset(void* dest, int value, unsigned int n);
-int memcmp(const void* a, const void* b, unsigned int n);
+size_t strlen(const char* s);
+void* memcpy(void* dest, const void* src, size_t n);
+void* memset(void* dest, int value, size_t n);
+int memcmp(const void* a, const void* b, size_t n);
 
 void spin_lock(spinlock_t* lock);
 void spin_unlock(spinlock_t* lock);
+
+uint32_t spin_lock_irqsave(spinlock_t* lock);
+void spin_unlock_irqrestore(spinlock_t* lock, uint32_t flags);
 
 #endif
 

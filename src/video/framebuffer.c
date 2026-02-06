@@ -295,10 +295,10 @@ void fb_console_set_color(uint32_t color) {
 }
 
 void fb_console_putc(char ch) {
-    spin_lock(&console_lock);
+    uint32_t flags = spin_lock_irqsave(&console_lock);
     if (ch == '\n') {
         console_newline();
-        spin_unlock(&console_lock);
+        spin_unlock_irqrestore(&console_lock, flags);
         return;
     }
     if (ch == '\b') {
@@ -309,7 +309,7 @@ void fb_console_putc(char ch) {
                 scrollback[scrollback_head][text_x] = text_entry(' ', text_color);
                 scrollback_render();
             }
-            spin_unlock(&console_lock);
+            spin_unlock_irqrestore(&console_lock, flags);
             return;
         }
         if (console_x >= font->width) {
@@ -320,7 +320,7 @@ void fb_console_putc(char ch) {
                 }
             }
         }
-        spin_unlock(&console_lock);
+        spin_unlock_irqrestore(&console_lock, flags);
         return;
     }
     if (framebuffer.type == FB_TYPE_TEXT) {
@@ -338,7 +338,7 @@ void fb_console_putc(char ch) {
         } else {
             scrollback_render();
         }
-        spin_unlock(&console_lock);
+        spin_unlock_irqrestore(&console_lock, flags);
         return;
     }
     uint32_t codepoint = (uint32_t)(uint8_t)ch;
@@ -351,7 +351,7 @@ void fb_console_putc(char ch) {
     if (console_x + font_bitmap_get()->width >= framebuffer.width) {
         console_newline();
     }
-    spin_unlock(&console_lock);
+    spin_unlock_irqrestore(&console_lock, flags);
 }
 
 void fb_console_backspace(void) {
@@ -359,6 +359,7 @@ void fb_console_backspace(void) {
 }
 
 void fb_console_write_len(const char* text, uint32_t len) {
+    uint32_t flags = spin_lock_irqsave(&console_lock);
     uint32_t index = 0;
     if (framebuffer.type == FB_TYPE_TEXT && scrollback_viewing) {
         scrollback_viewing = 0;
@@ -378,11 +379,38 @@ void fb_console_write_len(const char* text, uint32_t len) {
             continue;
         }
         if (codepoint == '\b') {
-            fb_console_backspace();
+            // Internal call, lock already held. We need a version of putc that doesn't lock.
+            // Or just handle backspace here.
+            const bitmap_font_t* font = font_bitmap_get();
+            if (framebuffer.type == FB_TYPE_TEXT) {
+                if (text_x > 0) {
+                    text_x--;
+                    scrollback[scrollback_head][text_x] = text_entry(' ', text_color);
+                    scrollback_render();
+                }
+            } else {
+                if (console_x >= font->width) {
+                    console_x -= font->width;
+                    for (uint32_t row = 0; row < font->height; ++row) {
+                        for (uint32_t col = 0; col < font->width; ++col) {
+                            fb_put_pixel(console_x + col, console_y + row, 0);
+                        }
+                    }
+                }
+            }
             continue;
         }
         if (framebuffer.type == FB_TYPE_TEXT) {
-            fb_console_putc((char)codepoint);
+            if (text_x >= TEXT_COLS) {
+                console_newline();
+            }
+            scrollback[scrollback_head][text_x] = text_entry((uint8_t)codepoint, text_color);
+            text_x++;
+            if (text_x >= TEXT_COLS) {
+                console_newline();
+            } else {
+                scrollback_render();
+            }
             continue;
         }
         if (console_use_vector) {
@@ -395,32 +423,50 @@ void fb_console_write_len(const char* text, uint32_t len) {
             console_newline();
         }
     }
+    spin_unlock_irqrestore(&console_lock, flags);
 }
 
 void fb_console_write(const char* text) {
     serial_write_string("DEBUG: fb_console_write: ");
     serial_write_string(text);
     serial_write_string("\n");
+    
+    spin_lock(&console_lock);
     uint32_t index = 0;
     if (framebuffer.type == FB_TYPE_TEXT && scrollback_viewing) {
         scrollback_viewing = 0;
         scrollback_view = scrollback_tail_start();
         scrollback_render();
     }
+    
     while (text[index]) {
-        uint32_t codepoint = utf8_decode(text, &index);
+        uint32_t codepoint;
+        uint32_t before = index;
+        codepoint = utf8_decode(text, &index);
+        if (index == before) {
+            index++;
+            codepoint = '?';
+        }
+        
         if (codepoint == '\n') {
             console_newline();
             continue;
         }
-        if (codepoint == '\b') {
-            fb_console_backspace();
-            continue;
-        }
+        
         if (framebuffer.type == FB_TYPE_TEXT) {
-            fb_console_putc((char)codepoint);
+            if (text_x >= TEXT_COLS) {
+                console_newline();
+            }
+            scrollback[scrollback_head][text_x] = text_entry((uint8_t)codepoint, text_color);
+            text_x++;
+            if (text_x >= TEXT_COLS) {
+                console_newline();
+            } else {
+                scrollback_render();
+            }
             continue;
         }
+        
         if (console_use_vector) {
             fb_draw_glyph_vector(console_x, console_y, console_color, codepoint);
         } else {
@@ -431,6 +477,7 @@ void fb_console_write(const char* text) {
             console_newline();
         }
     }
+    spin_unlock(&console_lock);
 }
 
 void fb_console_scroll(int lines) {

@@ -31,65 +31,65 @@ static uint32_t bitmap_test(uint32_t bit) {
     return (pmm_bitmap[bit / 32] >> (bit % 32)) & 1u;
 }
 
-void pmm_init(uint32_t start_addr, uint32_t size) {
-    spin_lock(&pmm_lock);
+void pmm_init(uint32_t start_addr, uint32_t max_size) {
+    uint32_t flags = spin_lock_irqsave(&pmm_lock);
     
-    uint32_t total_blocks = size / PMM_BLOCK_SIZE;
-    uint32_t bitmap_bytes = ((total_blocks + 31) / 32) * 4;
+    // We'll manage memory from 0 up to max_size
+    pmm_base = 0;
+    pmm_max_blocks = max_size / PMM_BLOCK_SIZE;
+    uint32_t bitmap_bytes = ((pmm_max_blocks + 31) / 32) * 4;
     uint32_t bitmap_start = align_up(start_addr, 4);
-    uint32_t managed_base = align_up(bitmap_start + bitmap_bytes, PMM_BLOCK_SIZE);
 
-    if (managed_base <= start_addr || managed_base > start_addr + size) {
-        pmm_bitmap = 0;
-        pmm_max_blocks = 0;
-        pmm_used_block_count = 0;
-        pmm_base = 0;
-        pmm_next_search = 0;
-        spin_unlock(&pmm_lock);
+    pmm_bitmap = (uint32_t*)bitmap_start;
+    pmm_used_block_count = pmm_max_blocks; // Initially all used
+    pmm_next_search = 0;
+    
+    // Set all bits to 1 (all used)
+    memset(pmm_bitmap, 0xFF, bitmap_bytes);
+
+    // Reserve the bitmap region itself
+    uint32_t reserve_start = align_down(bitmap_start, PMM_BLOCK_SIZE);
+    uint32_t reserve_end = align_up(bitmap_start + bitmap_bytes, PMM_BLOCK_SIZE);
+    
+    // Note: We don't free anything yet. kernel_main will call pmm_add_region.
+    
+    spin_unlock_irqrestore(&pmm_lock, flags);
+}
+
+void pmm_add_region(uint32_t addr, uint32_t size) {
+    uint32_t flags = spin_lock_irqsave(&pmm_lock);
+    if (!pmm_bitmap) {
+        spin_unlock_irqrestore(&pmm_lock, flags);
         return;
     }
 
-    pmm_base = managed_base;
-    pmm_max_blocks = (start_addr + size - managed_base) / PMM_BLOCK_SIZE;
-    pmm_bitmap = (uint32_t*)bitmap_start;
-    pmm_used_block_count = 0;
-    pmm_next_search = 0;
-    memset(pmm_bitmap, 0, ((pmm_max_blocks + 31) / 32) * 4);
-
-    uint32_t bitmap_region_start = start_addr;
-    uint32_t bitmap_region_end = managed_base;
-    uint32_t reserve_start = align_down(bitmap_region_start, PMM_BLOCK_SIZE);
-    uint32_t reserve_end = align_up(bitmap_region_end, PMM_BLOCK_SIZE);
+    uint32_t start = align_up(addr, PMM_BLOCK_SIZE);
+    uint32_t end = align_down(addr + size, PMM_BLOCK_SIZE);
     
-    // We can't call pmm_reserve_region here recursively because of the lock.
-    // So we duplicate the logic inline or release/acquire lock.
-    // Since this is init, single threaded usually, but let's be safe.
-    // Inline the reservation logic.
-    
-    uint32_t start = reserve_start;
-    uint32_t end = reserve_end;
-    
-    if (start < pmm_base) start = pmm_base;
-    if (end > pmm_base + pmm_max_blocks * PMM_BLOCK_SIZE) end = pmm_base + pmm_max_blocks * PMM_BLOCK_SIZE;
-    
-    if (end > start) {
-        uint32_t first = (start - pmm_base) / PMM_BLOCK_SIZE;
-        uint32_t last = (end - pmm_base) / PMM_BLOCK_SIZE;
-        for (uint32_t i = first; i < last; ++i) {
-             if (!bitmap_test(i)) {
-                bitmap_set(i);
-                pmm_used_block_count++;
-            }
-        }
+    if (start >= end) {
+        spin_unlock_irqrestore(&pmm_lock, flags);
+        return;
     }
 
-    spin_unlock(&pmm_lock);
+    uint32_t first = start / PMM_BLOCK_SIZE;
+    uint32_t last = end / PMM_BLOCK_SIZE;
+    
+    if (last > pmm_max_blocks) last = pmm_max_blocks;
+
+    for (uint32_t i = first; i < last; ++i) {
+        if (bitmap_test(i)) {
+            bitmap_clear(i);
+            pmm_used_block_count--;
+        }
+    }
+    
+    spin_unlock_irqrestore(&pmm_lock, flags);
 }
 
 uint32_t pmm_alloc_block(void) {
-    spin_lock(&pmm_lock);
+    uint32_t flags = spin_lock_irqsave(&pmm_lock);
     if (!pmm_bitmap || pmm_used_block_count >= pmm_max_blocks) {
-        spin_unlock(&pmm_lock);
+        spin_unlock_irqrestore(&pmm_lock, flags);
         return 0;
     }
     
@@ -112,7 +112,7 @@ uint32_t pmm_alloc_block(void) {
                     bitmap_set(index);
                     pmm_used_block_count++;
                     pmm_next_search = index + 1;
-                    spin_unlock(&pmm_lock);
+                    spin_unlock_irqrestore(&pmm_lock, flags);
                     return pmm_base + index * PMM_BLOCK_SIZE;
                 }
             }
@@ -131,7 +131,7 @@ uint32_t pmm_alloc_block(void) {
                         bitmap_set(index);
                         pmm_used_block_count++;
                         pmm_next_search = index + 1;
-                        spin_unlock(&pmm_lock);
+                        spin_unlock_irqrestore(&pmm_lock, flags);
                         return pmm_base + index * PMM_BLOCK_SIZE;
                     }
                 }
@@ -139,24 +139,20 @@ uint32_t pmm_alloc_block(void) {
         }
     }
     
-    spin_unlock(&pmm_lock);
+    spin_unlock_irqrestore(&pmm_lock, flags);
     return 0;
 }
 
-void pmm_free_block(void* addr) {
-    spin_lock(&pmm_lock);
+void pmm_free_block(uint32_t address) {
+    uint32_t flags = spin_lock_irqsave(&pmm_lock);
     if (!pmm_bitmap) {
-        spin_unlock(&pmm_lock);
+        spin_unlock_irqrestore(&pmm_lock, flags);
         return;
     }
-    uint32_t address = (uint32_t)addr;
-    if (address < pmm_base) {
-        spin_unlock(&pmm_lock);
-        return;
-    }
-    uint32_t index = (address - pmm_base) / PMM_BLOCK_SIZE;
+    
+    uint32_t index = address / PMM_BLOCK_SIZE;
     if (index >= pmm_max_blocks) {
-        spin_unlock(&pmm_lock);
+        spin_unlock_irqrestore(&pmm_lock, flags);
         return;
     }
     if (bitmap_test(index)) {
@@ -168,23 +164,48 @@ void pmm_free_block(void* addr) {
             pmm_next_search = index;
         }
     }
-    spin_unlock(&pmm_lock);
+    spin_unlock_irqrestore(&pmm_lock, flags);
 }
 
 void pmm_reserve_region(uint32_t addr, uint32_t size) {
-    spin_lock(&pmm_lock);
+    uint32_t flags = spin_lock_irqsave(&pmm_lock);
+    if (!pmm_bitmap) {
+        spin_unlock_irqrestore(&pmm_lock, flags);
+        return;
+    }
+
+    uint32_t start = align_down(addr, PMM_BLOCK_SIZE);
+    uint32_t end = align_up(addr + size, PMM_BLOCK_SIZE);
+    
+    uint32_t first = start / PMM_BLOCK_SIZE;
+    uint32_t last = end / PMM_BLOCK_SIZE;
+    
+    if (last > pmm_max_blocks) last = pmm_max_blocks;
+
+    for (uint32_t i = first; i < last; ++i) {
+        if (!bitmap_test(i)) {
+            bitmap_set(i);
+            pmm_used_block_count++;
+        }
+    }
+    
+    spin_unlock_irqrestore(&pmm_lock, flags);
+}
+
+void pmm_free_region(uint32_t addr, uint32_t size) {
+    uint32_t flags = spin_lock_irqsave(&pmm_lock);
     if (!pmm_bitmap || size == 0) {
-        spin_unlock(&pmm_lock);
+        spin_unlock_irqrestore(&pmm_lock, flags);
         return;
     }
     uint32_t start = align_down(addr, PMM_BLOCK_SIZE);
     uint32_t end = align_up(addr + size, PMM_BLOCK_SIZE);
     if (end <= start) {
-        spin_unlock(&pmm_lock);
+        spin_unlock_irqrestore(&pmm_lock, flags);
         return;
     }
     if (end <= pmm_base) {
-        spin_unlock(&pmm_lock);
+        spin_unlock_irqrestore(&pmm_lock, flags);
         return;
     }
     if (start < pmm_base) {
@@ -196,12 +217,17 @@ void pmm_reserve_region(uint32_t addr, uint32_t size) {
         last = pmm_max_blocks;
     }
     for (uint32_t i = first; i < last; ++i) {
-        if (!bitmap_test(i)) {
-            bitmap_set(i);
-            pmm_used_block_count++;
+        if (bitmap_test(i)) {
+            bitmap_clear(i);
+            if (pmm_used_block_count > 0) {
+                pmm_used_block_count--;
+            }
+            if (i < pmm_next_search) {
+                pmm_next_search = i;
+            }
         }
     }
-    spin_unlock(&pmm_lock);
+    spin_unlock_irqrestore(&pmm_lock, flags);
 }
 
 uint32_t pmm_total_blocks(void) {

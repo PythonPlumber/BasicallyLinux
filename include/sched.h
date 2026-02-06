@@ -1,7 +1,7 @@
 #ifndef SCHED_H
 #define SCHED_H
 
-#include "idt.h"
+#include "cpu.h"
 #include "process.h"
 
 void scheduler_init(void);
@@ -23,6 +23,7 @@ void scheduler_sleep(uint64_t ticks);
 int scheduler_wake(uint32_t pid);
 void scheduler_yield(void);
 void scheduler_balance_load(void);
+void scheduler_loop(void);
 process_t* process_fork(process_t* parent, registers_t* regs);
 registers_t* process_exec(process_t* proc, void (*entry)(void));
 registers_t* process_exec_elf(process_t* proc, const uint8_t* elf_data, uint32_t size);

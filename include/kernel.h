@@ -4,14 +4,6 @@
 #include "types.h"
 
 void kernel_main(unsigned int multiboot_magic, unsigned int multiboot_info_addr);
-void enable_interrupts(void);
-void disable_interrupts(void);
-void fpu_enable(void);
-void sse_enable(void);
-int cpu_has_sse(void);
-int cpu_has_sse41(void);
-void cpu_get_vendor(char* out, uint32_t max);
-void cpu_reboot(void);
 uint8_t rtc_read(uint8_t reg);
 uint32_t pci_config_read(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset);
 uint32_t pci_scan_bus(void);
