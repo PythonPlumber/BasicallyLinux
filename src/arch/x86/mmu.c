@@ -47,6 +47,20 @@ static uint32_t* alloc_table_any(void) {
     return table;
 }
 
+void mmu_enable_pse(void) {
+    uint32_t cr4;
+    asm volatile("mov %%cr4, %0" : "=r"(cr4));
+    cr4 |= 0x10;
+    asm volatile("mov %0, %%cr4" : : "r"(cr4));
+}
+
+void mmu_enable_paging(void) {
+    uint32_t cr0;
+    asm volatile("mov %%cr0, %0" : "=r"(cr0));
+    cr0 |= 0x80000000;
+    asm volatile("mov %0, %%cr0" : : "r"(cr0));
+}
+
 void mmu_init(void) {
     for (uint32_t i = 0; i < 1024; ++i) {
         page_directory[i] = PAGE_RW;
@@ -87,17 +101,8 @@ void mmu_init(void) {
 
     paging_switch_directory((uintptr_t)page_directory);
     
-    // Enable PSE
-    uint32_t cr4;
-    asm volatile("mov %%cr4, %0" : "=r"(cr4));
-    cr4 |= 0x10;
-    asm volatile("mov %0, %%cr4" : : "r"(cr4));
-
-    // Enable Paging
-    uint32_t cr0;
-    asm volatile("mov %%cr0, %0" : "=r"(cr0));
-    cr0 |= 0x80000000;
-    asm volatile("mov %0, %%cr0" : : "r"(cr0));
+    mmu_enable_pse();
+    mmu_enable_paging();
 }
 
 void mmu_map_page_dir(uintptr_t* dir, uintptr_t virt, uintptr_t phys, uint32_t flags) {

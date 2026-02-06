@@ -74,8 +74,8 @@ void pic_remap(void) {
     outb(0xA1, 0x01);
     io_wait();
 
-    outb(0x21, 0x0);
-    outb(0xA1, 0x0);
+    outb(0x21, 0xFB); // Mask all except slave PIC (IRQ2)
+    outb(0xA1, 0xFF); // Mask all slave PIC IRQs
 }
 
 void idt_set_gate(uint8_t num, uint32_t base, uint16_t selector, uint8_t type, uint8_t dpl, uint8_t present) {

@@ -45,4 +45,8 @@ void mmu_destroy_space(uintptr_t* dir);
 // Fault handling
 uintptr_t mmu_get_fault_addr(void);
 
+// x86 Specific (move to arch/x86/mmu.h if exists)
+void mmu_enable_pse(void);
+void mmu_enable_paging(void);
+
 #endif
