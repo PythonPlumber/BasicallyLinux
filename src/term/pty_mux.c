@@ -1,4 +1,4 @@
-#include "pty_mux.h"
+#include "term/pty_mux.h"
 #include "types.h"
 
 static pty_mux_state_t state;

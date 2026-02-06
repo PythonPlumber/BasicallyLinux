@@ -1,8 +1,8 @@
 #include "selftest.h"
-#include "ai_model.h"
+#include "ai/ai_model.h"
 #include "diag.h"
 #include "fixedpoint.h"
-#include "gguf.h"
+#include "ai/gguf.h"
 
 // Tracks the most recent self-test failure count.
 static uint32_t selftest_failures = 0;

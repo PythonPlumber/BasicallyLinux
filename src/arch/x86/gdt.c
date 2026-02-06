@@ -1,4 +1,4 @@
-#include "gdt.h"
+#include "arch/x86/gdt.h"
 #include "types.h"
 
 typedef struct {

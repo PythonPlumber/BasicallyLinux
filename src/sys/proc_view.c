@@ -1,4 +1,4 @@
-#include "proc_view.h"
+#include "sys/proc_view.h"
 #include "types.h"
 
 static proc_view_state_t state;

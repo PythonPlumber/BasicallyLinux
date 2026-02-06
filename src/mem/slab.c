@@ -1,6 +1,6 @@
-#include "slab.h"
-#include "heap.h"
-#include "kswapd.h"
+#include "mem/slab.h"
+#include "mem/heap.h"
+#include "mem/kswapd.h"
 #include "types.h"
 #include "util.h"
 

@@ -1,7 +1,7 @@
 #ifndef IPC_FUTEX_H
 #define IPC_FUTEX_H
 
-#include "sched.h"
+#include "kernel/sched.h"
 #include "types.h"
 
 typedef struct {

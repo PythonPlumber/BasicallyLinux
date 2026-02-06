@@ -12,6 +12,8 @@ typedef void (*keyboard_callback_t)(int);
 #define KEY_DELETE 0x84
 #define KEY_PAGE_UP 0x85
 #define KEY_PAGE_DOWN 0x86
+#define KEY_HOME 0x87
+#define KEY_END 0x88
 
 void keyboard_init(void);
 void keyboard_set_callback(keyboard_callback_t callback);

@@ -1,4 +1,4 @@
-#include "pmm.h"
+#include "mem/pmm.h"
 #include "types.h"
 #include "util.h"
 
@@ -66,13 +66,15 @@ void pmm_add_region(uint32_t addr, uint32_t size) {
     uint32_t start = align_up(addr, PMM_BLOCK_SIZE);
     uint32_t end = align_down(addr + size, PMM_BLOCK_SIZE);
     
-    if (start >= end) {
+    if (start >= end || end <= pmm_base) {
         spin_unlock_irqrestore(&pmm_lock, flags);
         return;
     }
 
-    uint32_t first = start / PMM_BLOCK_SIZE;
-    uint32_t last = end / PMM_BLOCK_SIZE;
+    if (start < pmm_base) start = pmm_base;
+
+    uint32_t first = (start - pmm_base) / PMM_BLOCK_SIZE;
+    uint32_t last = (end - pmm_base) / PMM_BLOCK_SIZE;
     
     if (last > pmm_max_blocks) last = pmm_max_blocks;
 
@@ -177,8 +179,15 @@ void pmm_reserve_region(uint32_t addr, uint32_t size) {
     uint32_t start = align_down(addr, PMM_BLOCK_SIZE);
     uint32_t end = align_up(addr + size, PMM_BLOCK_SIZE);
     
-    uint32_t first = start / PMM_BLOCK_SIZE;
-    uint32_t last = end / PMM_BLOCK_SIZE;
+    if (start >= end || end <= pmm_base) {
+        spin_unlock_irqrestore(&pmm_lock, flags);
+        return;
+    }
+
+    if (start < pmm_base) start = pmm_base;
+
+    uint32_t first = (start - pmm_base) / PMM_BLOCK_SIZE;
+    uint32_t last = (end - pmm_base) / PMM_BLOCK_SIZE;
     
     if (last > pmm_max_blocks) last = pmm_max_blocks;
 

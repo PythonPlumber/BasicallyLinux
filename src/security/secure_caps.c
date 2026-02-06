@@ -1,4 +1,4 @@
-#include "secure_caps.h"
+#include "security/secure_caps.h"
 #include "types.h"
 
 void secure_caps_init(void) {

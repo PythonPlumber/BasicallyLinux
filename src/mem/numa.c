@@ -1,5 +1,5 @@
-#include "numa.h"
-#include "pmm.h"
+#include "mem/numa.h"
+#include "mem/pmm.h"
 #include "types.h"
 
 #define NUMA_MAX_NODES 4

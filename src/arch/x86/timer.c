@@ -1,6 +1,6 @@
 #include "types.h"
-#include "timer.h"
-#include "serial.h"
+#include "arch/x86/timer.h"
+#include "drivers/serial.h"
 
 // This counter increments every time the PIT timer fires
 static uint64_t global_ticks = 0;

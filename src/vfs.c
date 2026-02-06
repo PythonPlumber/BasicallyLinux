@@ -1,18 +1,8 @@
 #include "vfs.h"
 #include "types.h"
+#include "util.h"
 
 static fs_node_t* vfs_root_node = 0;
-
-static int vfs_strcmp(const uint8_t* a, const char* b) {
-    uint32_t i = 0;
-    while (a[i] && b[i]) {
-        if (a[i] != (uint8_t)b[i]) {
-            return (int)a[i] - (int)(uint8_t)b[i];
-        }
-        ++i;
-    }
-    return (int)a[i] - (int)(uint8_t)b[i];
-}
 
 void vfs_init(void) {
     vfs_root_node = 0;
@@ -27,28 +17,65 @@ fs_node_t* vfs_root(void) {
 }
 
 fs_node_t* vfs_find(const char* name) {
-    if (!vfs_root_node || !vfs_root_node->impl) {
+    if (!vfs_root_node || !name) {
         return 0;
     }
-    if (!name) {
-        return 0;
-    }
+
+    fs_node_t* current = vfs_root_node;
+    
+    // Skip leading slashes
     while (*name == '/') {
         name++;
     }
-    for (uint32_t i = 0; name[i]; ++i) {
-        if (name[i] == '/') {
+    
+    if (*name == '\0') {
+        return current;
+    }
+
+    char component[256];
+    while (*name) {
+        uint32_t i = 0;
+        while (*name && *name != '/' && i < 255) {
+            component[i++] = *name++;
+        }
+        component[i] = '\0';
+        
+        if (*name && *name != '/') {
+            // Component too long
+            return 0;
+        }
+        
+        if (*name == '/') {
+            name++;
+        }
+        
+        // Find component in current directory
+        if (current->finddir) {
+            current = current->finddir(current, component);
+            if (!current) {
+                return 0;
+            }
+        } else if (current->impl) {
+            // Fallback for simple ramdisk/array based VFS
+            fs_node_t* nodes = (fs_node_t*)current->impl;
+            uint32_t count = current->length;
+            fs_node_t* found = 0;
+            for (uint32_t j = 0; j < count; ++j) {
+                if (strcmp((const char*)nodes[j].name, component) == 0) {
+                    found = &nodes[j];
+                    break;
+                }
+            }
+            if (!found) {
+                return 0;
+            }
+            current = found;
+        } else {
             return 0;
         }
     }
-    fs_node_t* nodes = (fs_node_t*)vfs_root_node->impl;
-    uint32_t count = vfs_root_node->length;
-    for (uint32_t i = 0; i < count; ++i) {
-        if (vfs_strcmp(nodes[i].name, name) == 0) {
-            return &nodes[i];
-        }
-    }
-    return 0;
+    
+    return current;
 }
 
 uint32_t vfs_read(fs_node_t* node, uint32_t offset, uint32_t size, uint8_t* buffer) {

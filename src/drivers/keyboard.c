@@ -1,6 +1,6 @@
 #include "types.h"
-#include "keyboard.h"
-#include "interrupts.h"
+#include "drivers/keyboard.h"
+#include "arch/x86/interrupts.h"
 
 #define KEYBOARD_BUFFER_SIZE 128
 
@@ -98,6 +98,10 @@ static registers_t* keyboard_irq(registers_t* regs) {
             key_to_pass = KEY_PAGE_UP;
         } else if (scancode == 0x51) {
             key_to_pass = KEY_PAGE_DOWN;
+        } else if (scancode == 0x47) {
+            key_to_pass = KEY_HOME;
+        } else if (scancode == 0x4F) {
+            key_to_pass = KEY_END;
         }
         if (key_to_pass) {
             buffer_push((char)key_to_pass);

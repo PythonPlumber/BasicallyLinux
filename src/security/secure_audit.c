@@ -1,5 +1,5 @@
-#include "secure_audit.h"
-#include "timer.h"
+#include "security/secure_audit.h"
+#include "arch/x86/timer.h"
 #include "types.h"
 
 static secure_audit_state_t state;

@@ -45,6 +45,16 @@ void mmu_destroy_space(uintptr_t* dir);
 // Fault handling
 uintptr_t mmu_get_fault_addr(void);
 
+// Temporary mapping for physical memory access
+void* mmu_map_temp(uintptr_t phys);
+void mmu_unmap_temp(void);
+void* mmu_map_temp2(uintptr_t phys);
+void mmu_unmap_temp2(void);
+
+// TLB management
+void mmu_tlb_flush(uintptr_t addr);
+void mmu_tlb_flush_all(void);
+
 // x86 Specific (move to arch/x86/mmu.h if exists)
 void mmu_enable_pse(void);
 void mmu_enable_paging(void);

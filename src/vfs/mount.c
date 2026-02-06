@@ -1,4 +1,4 @@
-#include "vfs_mount.h"
+#include "vfs/vfs_mount.h"
 #include "types.h"
 
 #define VFS_MAX_MOUNTS 8

@@ -1,5 +1,5 @@
 #include "types.h"
-#include "usb_nexus.h"
+#include "drivers/usb_nexus.h"
 
 static uint32_t port_count = 0;
 

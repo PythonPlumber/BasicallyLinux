@@ -1,7 +1,7 @@
 #ifndef PROCESS_H
 #define PROCESS_H
 
-#include "secure_caps.h"
+#include "security/secure_caps.h"
 #include "types.h"
 
 struct process;

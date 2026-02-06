@@ -1,4 +1,4 @@
-#include "sys_config.h"
+#include "sys/sys_config.h"
 #include "types.h"
 
 static sys_config_state_t state;

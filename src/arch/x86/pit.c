@@ -1,5 +1,5 @@
-#include "timer.h"
-#include "ports.h"
+#include "arch/x86/timer.h"
+#include "arch/x86/ports.h"
 
 void pit_init(uint32_t frequency) {
     if (frequency == 0) frequency = 1;

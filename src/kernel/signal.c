@@ -1,5 +1,5 @@
-#include "sched.h"
-#include "signal.h"
+#include "kernel/sched.h"
+#include "kernel/signal.h"
 #include "types.h"
 
 int signal_send(uint32_t pid, uint32_t sig) {

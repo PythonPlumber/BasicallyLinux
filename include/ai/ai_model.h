@@ -2,7 +2,7 @@
 #define AI_MODEL_H
 
 #include "fixedpoint.h"
-#include "gguf.h"
+#include "ai/gguf.h"
 #include "types.h"
 
 #define AI_MODEL_VIRT_BASE 0xE0000000u

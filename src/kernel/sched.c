@@ -1,19 +1,19 @@
 #include "paging.h"
-#include "sched.h"
-#include "secure_caps.h"
-#include "signal.h"
+#include "kernel/sched.h"
+#include "security/secure_caps.h"
+#include "kernel/signal.h"
 #include "smp.h"
-#include "timer.h"
+#include "arch/x86/timer.h"
 #include "types.h"
-#include "vm_space.h"
-#include "heap.h"
+#include "mem/vm_space.h"
+#include "mem/heap.h"
 #include "util.h"
-#include "elf_loader.h"
+#include "user/elf_loader.h"
 #include "cpu.h"
 
 #define STACK_SIZE 4096
 #define MAX_PRIORITY_BOOST 8
-#define MAX_CPUS 4
+#define MAX_CPUS 32
 
 typedef struct {
     process_t* head;
@@ -84,6 +84,14 @@ static void list_append(process_t* proc) {
     }
 }
 
+static uint32_t next_pid = 1;
+
+static uint32_t alloc_pid(void) {
+    uint32_t pid = next_pid++;
+    // In a real system we'd check for wrap-around and collisions here
+    return pid;
+}
+
 static void enqueue_task(process_t* proc) {
     uint32_t best_cpu = 0;
     uint32_t min_count = 0xFFFFFFFF;
@@ -104,7 +112,7 @@ static void enqueue_task(process_t* proc) {
     
     runqueue_t* rq = &runqueues[best_cpu];
     
-    spin_lock(&rq->lock);
+    uint32_t flags = spin_lock_irqsave(&rq->lock);
     
     proc->run_next = 0;
     proc->current_cpu = best_cpu;
@@ -118,7 +126,7 @@ static void enqueue_task(process_t* proc) {
     }
     rq->count++;
     
-    spin_unlock(&rq->lock);
+    spin_unlock_irqrestore(&rq->lock, flags);
 }
 
 static void dequeue_task(process_t* proc) {
@@ -127,10 +135,10 @@ static void dequeue_task(process_t* proc) {
     
     runqueue_t* rq = &runqueues[cpu];
     
-    spin_lock(&rq->lock);
+    uint32_t flags = spin_lock_irqsave(&rq->lock);
     
     if (!rq->head) {
-        spin_unlock(&rq->lock);
+        spin_unlock_irqrestore(&rq->lock, flags);
         return;
     }
     
@@ -151,7 +159,7 @@ static void dequeue_task(process_t* proc) {
     }
     proc->run_next = 0;
     
-    spin_unlock(&rq->lock);
+    spin_unlock_irqrestore(&rq->lock, flags);
 }
 
 static process_t* find_process_by_pid(uint32_t pid) {
@@ -203,7 +211,7 @@ void scheduler_init(void) {
 static process_t* process_create_ex(void (*entry)(void), uint32_t* page_directory, int start_immediately) {
     uint32_t flags = spin_lock_irqsave(&sched_lock);
     
-    uint32_t pid = process_count++; // Simple PID alloc
+    uint32_t pid = alloc_pid();
     
     process_t* proc = (process_t*)kmalloc(sizeof(process_t));
     if (!proc) {
@@ -1074,6 +1082,10 @@ int process_wait(uint32_t pid, uint32_t* exit_code) {
             process_count--;
             
             // Free memory
+            if (child->page_directory) {
+                mmu_destroy_space((uintptr_t*)child->page_directory);
+            }
+            
             if (child->kernel_stack) {
                 kfree(child->kernel_stack);
             }

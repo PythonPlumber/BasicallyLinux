@@ -1,5 +1,5 @@
 #include "diag.h"
-#include "serial.h"
+#include "drivers/serial.h"
 #include "util.h"
 
 #define DIAG_LINES 64

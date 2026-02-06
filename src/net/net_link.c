@@ -1,4 +1,4 @@
-#include "net_link.h"
+#include "net/net_link.h"
 #include "types.h"
 
 static net_link_t primary_link;

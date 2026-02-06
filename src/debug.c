@@ -1,6 +1,6 @@
 #include "debug.h"
-#include "framebuffer.h"
-#include "serial.h"
+#include "video/framebuffer.h"
+#include "drivers/serial.h"
 #include <stdarg.h>
 
 void debug_write(const char* msg) {

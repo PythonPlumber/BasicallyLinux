@@ -1,9 +1,9 @@
-#include "framebuffer.h"
+#include "video/framebuffer.h"
 #include "paging.h"
-#include "vga.h"
-#include "font.h"
-#include "multiboot.h"
-#include "ports.h"
+#include "drivers/vga.h"
+#include "video/font.h"
+#include "arch/x86/multiboot.h"
+#include "arch/x86/ports.h"
 #include "types.h"
 
 #define FB_TYPE_TEXT 0

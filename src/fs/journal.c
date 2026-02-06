@@ -1,4 +1,4 @@
-#include "journal.h"
+#include "fs/journal.h"
 #include "types.h"
 
 static uint32_t next_tx_id = 1;

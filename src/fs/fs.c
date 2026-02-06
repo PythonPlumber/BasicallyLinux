@@ -1,6 +1,6 @@
-#include "fs.h"
+#include "fs/fs.h"
 #include "types.h"
-#include "vfs_mount.h"
+#include "vfs/vfs_mount.h"
 
 #define FS_MAX_TYPES 8
 

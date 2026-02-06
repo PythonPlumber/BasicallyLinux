@@ -1,5 +1,5 @@
-#include "serial.h"
-#include "ports.h"
+#include "drivers/serial.h"
+#include "arch/x86/ports.h"
 #include "types.h"
 #include "util.h"
 

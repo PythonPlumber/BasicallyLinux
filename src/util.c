@@ -38,6 +38,28 @@ int memcmp(const void* a, const void* b, unsigned int n) {
     return 0;
 }
 
+int strcmp(const char* a, const char* b) {
+    uint32_t i = 0;
+    while (a[i] && b[i]) {
+        if (a[i] != b[i]) {
+            return (int)(uint8_t)a[i] - (int)(uint8_t)b[i];
+        }
+        i++;
+    }
+    return (int)(uint8_t)a[i] - (int)(uint8_t)b[i];
+}
+
+char* strncpy(char* dest, const char* src, uint32_t n) {
+    uint32_t i;
+    for (i = 0; i < n && src[i] != '\0'; i++) {
+        dest[i] = src[i];
+    }
+    for (; i < n; i++) {
+        dest[i] = '\0';
+    }
+    return dest;
+}
+
 void spin_lock(spinlock_t* lock) {
     while (__sync_lock_test_and_set(lock, 1)) {
         asm volatile("pause");

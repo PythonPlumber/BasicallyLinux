@@ -1,5 +1,5 @@
-#include "ipc_futex.h"
-#include "sched.h"
+#include "ipc/ipc_futex.h"
+#include "kernel/sched.h"
 #include "types.h"
 
 void ipc_futex_init(ipc_futex_t* futex, uint32_t value) {

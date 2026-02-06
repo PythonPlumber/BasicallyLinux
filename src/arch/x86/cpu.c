@@ -2,10 +2,10 @@
 #include "arch/x86/cpu.h"
 #include "arch/x86/gdt.h"
 #include "arch/x86/idt.h"
-#include "interrupts.h"
-#include "syscall.h"
-#include "mmu.h"
-#include "timer.h"
+#include "arch/x86/interrupts.h"
+#include "cpu/syscall.h"
+#include "arch/x86/mmu.h"
+#include "arch/x86/timer.h"
 
 void arch_init(void) {
     gdt_init();

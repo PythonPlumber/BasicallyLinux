@@ -1,6 +1,6 @@
-#include "hw_detect.h"
+#include "arch/x86/hw_detect.h"
 #include "arch/x86/ports.h"
-#include "serial.h"
+#include "drivers/serial.h"
 #include "diag.h"
 #include "util.h"
 #include "kernel.h"

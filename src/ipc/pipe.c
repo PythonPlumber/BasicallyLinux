@@ -1,5 +1,5 @@
-#include "heap.h"
-#include "ipc_pipe.h"
+#include "mem/heap.h"
+#include "ipc/ipc_pipe.h"
 #include "types.h"
 
 ipc_pipe_t* ipc_pipe_create(uint32_t size) {

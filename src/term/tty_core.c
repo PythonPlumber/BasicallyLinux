@@ -1,4 +1,4 @@
-#include "tty_core.h"
+#include "term/tty_core.h"
 #include "types.h"
 
 static tty_state_t state;

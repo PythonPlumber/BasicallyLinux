@@ -1,7 +1,7 @@
 #ifndef SYSCALL_H
 #define SYSCALL_H
 
-#include "idt.h"
+#include "arch/x86/idt.h"
 
 enum {
     SYS_WRITE = 0,

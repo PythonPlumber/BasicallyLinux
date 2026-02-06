@@ -1,4 +1,4 @@
-#include "ipc_socket.h"
+#include "ipc/ipc_socket.h"
 #include "types.h"
 
 static ipc_socket_t sockets[IPC_SOCKET_MAX];

@@ -1,4 +1,4 @@
-#include "net_ip.h"
+#include "net/net_ip.h"
 #include "types.h"
 
 static net_ip_state_t state;

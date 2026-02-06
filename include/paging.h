@@ -3,7 +3,7 @@
 
 #include "process.h"
 #include "types.h"
-#include "mmu.h"
+#include "arch/x86/mmu.h"
 
 // Generic VMM functions (implemented in vmm.c)
 void vmm_init(void);

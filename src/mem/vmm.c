@@ -1,10 +1,10 @@
 #include "paging.h"
-#include "mmu.h"
-#include "pmm.h"
-#include "heap.h"
+#include "arch/x86/mmu.h"
+#include "mem/pmm.h"
+#include "mem/heap.h"
 #include "process.h"
 #include "util.h"
-#include "serial.h"
+#include "drivers/serial.h"
 
 #define VM_PAGE_SIZE 4096u
 #define SHARED_MAX 8u
@@ -62,8 +62,12 @@ int vm_map_region(process_t* proc, uint32_t start, uint32_t size, uint32_t flags
     for (uint32_t addr = base; addr < end; addr += VM_PAGE_SIZE) {
         uint32_t phys = pmm_alloc_block();
         if (!phys) return 0;
-        // Identity map the physical page temporarily if needed, or assume it's accessible
-        memset((void*)phys, 0, VM_PAGE_SIZE);
+        
+        // Safely zero the page using a temporary mapping.
+        void* ptr = mmu_map_temp(phys);
+        memset(ptr, 0, VM_PAGE_SIZE);
+        mmu_unmap_temp();
+        
         mmu_map_page_dir(dir, addr, phys, mmu_flags);
     }
     return 1;
@@ -83,7 +87,7 @@ int vm_unmap_region(process_t* proc, uint32_t start, uint32_t size) {
                 for (uint32_t addr = base; addr < end; addr += VM_PAGE_SIZE) {
                     uintptr_t phys = mmu_get_phys_dir(dir, addr);
                     if (phys) {
-                        pmm_free_block((void*)phys);
+                        pmm_free_block((uint32_t)phys);
                         mmu_unmap_page_dir(dir, addr);
                     }
                 }
@@ -124,7 +128,12 @@ int vm_handle_page_fault(process_t* proc, uint32_t addr, uint32_t err_code) {
                 uintptr_t new_phys = pmm_alloc_block();
                 if (!new_phys) return 0;
                 
-                memcpy((void*)new_phys, (void*)old_phys, VM_PAGE_SIZE);
+                void* dst = mmu_map_temp(new_phys);
+                void* src = mmu_map_temp2(old_phys);
+                memcpy(dst, src, VM_PAGE_SIZE);
+                mmu_unmap_temp2();
+                mmu_unmap_temp();
+
                 uint32_t flags = (region->flags & ~VM_COW) | VM_WRITE;
                 mmu_map_page_dir(dir, fault_addr, new_phys, vm_page_flags(flags));
                 region->flags = flags;
@@ -136,7 +145,11 @@ int vm_handle_page_fault(process_t* proc, uint32_t addr, uint32_t err_code) {
                 if (!dir) dir = mmu_get_current_space();
                 uintptr_t phys = pmm_alloc_block();
                 if (!phys) return 0;
-                memset((void*)phys, 0, VM_PAGE_SIZE);
+                
+                void* ptr = mmu_map_temp(phys);
+                memset(ptr, 0, VM_PAGE_SIZE);
+                mmu_unmap_temp();
+
                 mmu_map_page_dir(dir, fault_addr, phys, vm_page_flags(region->flags));
                 return 1;
             }

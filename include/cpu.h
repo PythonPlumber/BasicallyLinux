@@ -35,7 +35,7 @@ int interrupts_enabled(void);
 uint32_t cpu_get_id(void);
 uint32_t cpu_get_count(void);
 
-#include "mmu.h"
+#include "arch/x86/mmu.h"
 
 // TLB management
 static inline void tlb_flush(uintptr_t addr) { mmu_tlb_flush(addr); }

@@ -1,4 +1,4 @@
-#include "pcie_portshift.h"
+#include "drivers/pcie_portshift.h"
 #include "types.h"
 
 void pcie_portshift_init(void) {

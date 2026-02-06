@@ -1,5 +1,5 @@
-#include "kswapd.h"
-#include "pmm.h"
+#include "mem/kswapd.h"
+#include "mem/pmm.h"
 #include "types.h"
 
 #define KSWAPD_MAX_RECLAIMERS 8

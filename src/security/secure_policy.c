@@ -1,4 +1,4 @@
-#include "secure_policy.h"
+#include "security/secure_policy.h"
 #include "types.h"
 
 typedef struct {
@@ -10,26 +10,28 @@ typedef struct {
 
 typedef struct {
     uint32_t subject;
-    char pattern[64];
+    char pattern[256];
     uint32_t action;
     uint32_t allow;
 } secure_path_rule_t;
 
 #define SECURE_RULE_MAX 64
 #define SECURE_PATH_RULE_MAX 32
+#define GLOB_MAX_RECURSION 16
 
 static secure_policy_state_t state;
 static secure_rule_t rules[SECURE_RULE_MAX];
 static secure_path_rule_t path_rules[SECURE_PATH_RULE_MAX];
 static uint32_t path_rule_count = 0;
 
-static int glob_match(const char* pattern, const char* string) {
+static int glob_match_recursive(const char* pattern, const char* string, int depth) {
+    if (depth > GLOB_MAX_RECURSION) return 0;
     while (*pattern) {
         if (*pattern == '*') {
             while (*pattern == '*') pattern++;
             if (!*pattern) return 1;
             while (*string) {
-                if (glob_match(pattern, string)) return 1;
+                if (glob_match_recursive(pattern, string, depth + 1)) return 1;
                 string++;
             }
             return 0;
@@ -44,6 +46,10 @@ static int glob_match(const char* pattern, const char* string) {
         }
     }
     return !*string;
+}
+
+static int glob_match(const char* pattern, const char* string) {
+    return glob_match_recursive(pattern, string, 0);
 }
 
 static void strncpy(char* dest, const char* src, uint32_t n) {
@@ -99,7 +105,7 @@ uint32_t secure_policy_add_rule_path(uint32_t subject, const char* pattern, uint
         return 0;
     }
     path_rules[path_rule_count].subject = subject;
-    strncpy(path_rules[path_rule_count].pattern, pattern, 64);
+    strncpy(path_rules[path_rule_count].pattern, pattern, 256);
     path_rules[path_rule_count].action = action;
     path_rules[path_rule_count].allow = allow ? 1u : 0u;
     path_rule_count++;

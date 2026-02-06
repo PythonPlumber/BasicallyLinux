@@ -1,7 +1,7 @@
 #ifndef IO_SCHED_H
 #define IO_SCHED_H
 
-#include "block.h"
+#include "storage/block.h"
 #include "types.h"
 
 typedef struct {

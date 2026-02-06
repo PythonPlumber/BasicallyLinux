@@ -1,13 +1,13 @@
-#include "interrupts.h"
+#include "arch/x86/interrupts.h"
 #include "arch/x86/idt.h"
 #include "arch/x86/cpu.h"
 #include "arch/x86/ports.h"
-#include "serial.h"
+#include "drivers/serial.h"
 #include "debug.h"
-#include "kswapd.h"
+#include "mem/kswapd.h"
 #include "paging.h"
-#include "sched.h"
-#include "timer.h"
+#include "kernel/sched.h"
+#include "arch/x86/timer.h"
 
 static interrupt_handler_t interrupt_handlers[256];
 static volatile uint32_t interrupt_depth = 0;

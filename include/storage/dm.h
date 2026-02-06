@@ -1,7 +1,7 @@
 #ifndef DM_H
 #define DM_H
 
-#include "block.h"
+#include "storage/block.h"
 #include "types.h"
 
 typedef struct {

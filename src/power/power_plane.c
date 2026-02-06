@@ -1,4 +1,4 @@
-#include "power_plane.h"
+#include "power/power_plane.h"
 #include "types.h"
 
 static power_plane_t plane;

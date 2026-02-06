@@ -1,4 +1,4 @@
-#include "inode_cache.h"
+#include "fs/inode_cache.h"
 #include "types.h"
 
 #define INODE_CACHE_MAX 32

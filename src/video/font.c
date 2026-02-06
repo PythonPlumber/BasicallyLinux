@@ -1,4 +1,4 @@
-#include "font.h"
+#include "video/font.h"
 
 static const uint8_t font8x8_basic[128][8] = {
     {0, 0, 0, 0, 0, 0, 0, 0},

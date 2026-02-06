@@ -1,5 +1,5 @@
-#include "idt.h"
-#include "ports.h"
+#include "arch/x86/idt.h"
+#include "arch/x86/ports.h"
 
 static idt_entry_t idt_entries[256];
 static idt_ptr_t idt_ptr;

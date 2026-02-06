@@ -1,5 +1,5 @@
-#include "fs.h"
-#include "fs_types.h"
+#include "fs/fs.h"
+#include "fs/fs_types.h"
 #include "types.h"
 
 static int ext4_mount(block_device_t* dev, fs_node_t* root) {

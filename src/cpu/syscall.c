@@ -1,20 +1,20 @@
-#include "acpi_power.h"
-#include "framebuffer.h"
-#include "heap.h"
+#include "power/acpi_power.h"
+#include "video/framebuffer.h"
+#include "mem/heap.h"
 #include "cpu.h"
-#include "power_plane.h"
-#include "sched.h"
-#include "secure_audit.h"
-#include "secure_caps.h"
-#include "secure_policy.h"
-#include "syscall.h"
-#include "interrupts.h"
-#include "timer.h"
-#include "trace_forge.h"
+#include "power/power_plane.h"
+#include "kernel/sched.h"
+#include "security/secure_audit.h"
+#include "security/secure_caps.h"
+#include "security/secure_policy.h"
+#include "cpu/syscall.h"
+#include "arch/x86/interrupts.h"
+#include "arch/x86/timer.h"
+#include "trace/trace_forge.h"
 #include "types.h"
 #include "util.h"
 #include "vfs.h"
-#include "heap.h"
+#include "mem/heap.h"
 
 #define SYS_COPY_LIMIT 4096u
 
@@ -275,7 +275,7 @@ static registers_t* sys_exit(registers_t* regs) {
 static registers_t* sys_wait(registers_t* regs) {
     uint32_t pid = regs->ebx;
     uint32_t* out = (uint32_t*)regs->ecx;
-    regs->eax = process_wait(pid, out) ? OS_OK : OS_ERR;
+    regs->eax = (uint32_t)process_wait(pid, out);
     return regs;
 }
 

@@ -1,5 +1,5 @@
-#include "trace_forge.h"
-#include "timer.h"
+#include "trace/trace_forge.h"
+#include "arch/x86/timer.h"
 #include "types.h"
 
 static trace_forge_state_t state;

@@ -1,4 +1,4 @@
-#include "dm.h"
+#include "storage/dm.h"
 #include "types.h"
 
 int dm_create(dm_device_t* dev, block_device_t* target, uint32_t start_lba) {

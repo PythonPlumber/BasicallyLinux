@@ -1,4 +1,4 @@
-#include "vm_space.h"
+#include "mem/vm_space.h"
 #include "paging.h"
 #include "process.h"
 #include "types.h"

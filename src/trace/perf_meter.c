@@ -1,4 +1,4 @@
-#include "perf_meter.h"
+#include "trace/perf_meter.h"
 #include "types.h"
 
 void perf_meter_init(perf_meter_t* meter) {

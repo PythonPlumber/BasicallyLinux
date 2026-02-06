@@ -1,4 +1,4 @@
-#include "msgi.h"
+#include "cpu/msgi.h"
 #include "types.h"
 
 void msgi_init(void) {

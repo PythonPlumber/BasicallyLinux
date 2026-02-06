@@ -1,5 +1,5 @@
-#include "acpi_power.h"
-#include "timer.h"
+#include "power/acpi_power.h"
+#include "arch/x86/timer.h"
 #include "types.h"
 
 static acpi_power_state_t power_state;

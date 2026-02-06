@@ -1,9 +1,9 @@
 #include "bench.h"
-#include "ai_model.h"
+#include "ai/ai_model.h"
 #include "diag.h"
 #include "fixedpoint.h"
-#include "heap.h"
-#include "timer.h"
+#include "mem/heap.h"
+#include "arch/x86/timer.h"
 
 // Stores the most recent benchmark duration in ticks.
 static uint64_t bench_ticks_last = 0;

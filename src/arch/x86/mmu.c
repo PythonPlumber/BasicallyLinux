@@ -1,11 +1,12 @@
-#include "mmu.h"
+#include "arch/x86/mmu.h"
 #include "cpu.h"
 #include "types.h"
 #include "util.h"
-#include "pmm.h"
-#include "heap.h"
-#include "serial.h"
-#include "hw_detect.h"
+#include "mem/pmm.h"
+#include "mem/heap.h"
+#include "util.h"
+#include "drivers/serial.h"
+#include "arch/x86/hw_detect.h"
 
 #define PAGE_PRESENT 0x1
 #define PAGE_RW 0x2
@@ -15,13 +16,40 @@
 #define VM_KERNEL_BASE 0xC0000000
 
 static uint32_t page_directory[1024] __attribute__((aligned(4096)));
-static uint32_t page_tables[64][1024] __attribute__((aligned(4096)));
+static uint32_t page_tables[512][1024] __attribute__((aligned(4096)));
 static uint32_t page_table_count = 0;
 static spinlock_t paging_lock = 0;
+static spinlock_t temp_map_lock = 0;
+static uint32_t temp_map_flags = 0;
+
+void* mmu_map_temp(uintptr_t phys) {
+    temp_map_flags = spin_lock_irqsave(&temp_map_lock);
+    uintptr_t temp_virt = 0xFFBFF000;
+    mmu_map_page(temp_virt, phys, PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE);
+    return (void*)temp_virt;
+}
+
+void mmu_unmap_temp(void) {
+    uintptr_t temp_virt = 0xFFBFF000;
+    mmu_unmap_page(temp_virt);
+    spin_unlock_irqrestore(&temp_map_lock, temp_map_flags);
+}
+
+void* mmu_map_temp2(uintptr_t phys) {
+    // Note: This assumes temp_map_lock is ALREADY held by mmu_map_temp
+    uintptr_t temp_virt = 0xFFBFE000;
+    mmu_map_page(temp_virt, phys, PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE);
+    return (void*)temp_virt;
+}
+
+void mmu_unmap_temp2(void) {
+    uintptr_t temp_virt = 0xFFBFE000;
+    mmu_unmap_page(temp_virt);
+}
 
 static uint32_t* alloc_table(void) {
     uint32_t flags = spin_lock_irqsave(&paging_lock);
-    if (page_table_count >= 64) {
+    if (page_table_count >= 512) {
         spin_unlock_irqrestore(&paging_lock, flags);
         return 0;
     }
@@ -84,16 +112,28 @@ void mmu_init(void) {
     // Identity map ACPI tables
     uint32_t rsdt = hw_acpi_get_rsdt_addr();
     if (rsdt) {
-        for (uint32_t i = 0; i < 4; i++) {
-            mmu_map_page_dir((uintptr_t*)page_directory, rsdt + i * 4096, rsdt + i * 4096, PAGE_PRESENT | PAGE_RW);
-        }
+        // Map RSDT header and its entries
+        mmu_map_page_dir((uintptr_t*)page_directory, rsdt, rsdt, PAGE_PRESENT | PAGE_RW);
+        
         uint32_t count = hw_acpi_get_rsdt_entries();
         if (count > 256) count = 256; // Sanity check
+        
+        uint32_t entries_ptr = rsdt + sizeof(acpi_sdt_header_t);
+        // Map the page containing the entry pointers
+        mmu_map_page_dir((uintptr_t*)page_directory, entries_ptr, entries_ptr, PAGE_PRESENT | PAGE_RW);
+
         for (uint32_t i = 0; i < count; i++) {
             uint32_t entry = hw_acpi_get_rsdt_entry(i);
             if (entry) {
-                for (uint32_t j = 0; j < 4; j++) {
-                    mmu_map_page_dir((uintptr_t*)page_directory, entry + j * 4096, entry + j * 4096, PAGE_PRESENT | PAGE_RW);
+                // Map the table header (usually enough to read signature/length)
+                mmu_map_page_dir((uintptr_t*)page_directory, entry, entry, PAGE_PRESENT | PAGE_RW);
+                
+                // If the table is larger than one page, map subsequent pages based on length
+                acpi_sdt_header_t* hdr = (acpi_sdt_header_t*)entry;
+                if (hdr->length > 4096) {
+                    for (uint32_t j = 4096; j < hdr->length; j += 4096) {
+                        mmu_map_page_dir((uintptr_t*)page_directory, entry + j, entry + j, PAGE_PRESENT | PAGE_RW);
+                    }
                 }
             }
         }
@@ -257,11 +297,12 @@ void mmu_destroy_space(uintptr_t* dir) {
                 continue;
             }
             
-            // For now, we assume other tables were allocated via PMM or heap
-            // If they were identity mapped, pmm_free_block works.
-            // If they were from heap, we should use kfree, but we can't easily distinguish.
-            // Let's assume all dynamic tables are from PMM for now as it's more common in MMU.
-            pmm_free_block((void*)table);
+            // Distinguish between tables allocated via PMM or heap
+            if (is_heap_ptr(table)) {
+                kfree(table);
+            } else {
+                pmm_free_block((uint32_t)table);
+            }
         }
     }
     kfree(dir);

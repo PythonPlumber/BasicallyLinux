@@ -1,6 +1,6 @@
-#include "framebuffer.h"
+#include "video/framebuffer.h"
 #include "types.h"
-#include "vga.h"
+#include "drivers/vga.h"
 
 static uint16_t* const vga_buffer = (uint16_t*)0xB8000;
 static const uint8_t vga_width = 80;

@@ -1,4 +1,4 @@
-#include "apex_intc.h"
+#include "cpu/apex_intc.h"
 #include "types.h"
 
 static uint32_t routes[256];

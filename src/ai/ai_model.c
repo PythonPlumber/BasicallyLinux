@@ -1,18 +1,18 @@
-#include "ai_model.h"
+#include "ai/ai_model.h"
 #include "debug.h"
 #include "diag.h"
 #include "fixedpoint.h"
-#include "gguf.h"
-#include "heap.h"
+#include "ai/gguf.h"
+#include "mem/heap.h"
 #include "paging.h"
-#include "pmm.h"
-#include "serial.h"
-#include "timer.h"
+#include "mem/pmm.h"
+#include "drivers/serial.h"
+#include "arch/x86/timer.h"
 #include "types.h"
 #include "util.h"
-#include "vga.h"
-#include "smp_rally.h"
-#include "sched.h"
+#include "drivers/vga.h"
+#include "arch/x86/smp_rally.h"
+#include "kernel/sched.h"
 
 #ifndef NO_AI_MODEL
 extern uint8_t _ai_model_start;
@@ -31,24 +31,14 @@ static ai_job_t* job_queue_tail = 0;
 static int ai_scheduler_running = 0;
 static uint32_t ai_worker_count = 0;
 // Spinlock for queue
-static volatile int job_queue_lock = 0;
-
-static void acquire_queue_lock() {
-    while (__sync_lock_test_and_set(&job_queue_lock, 1)) {
-        asm volatile("pause");
-    }
-}
-
-static void release_queue_lock() {
-    __sync_lock_release(&job_queue_lock);
-}
+static spinlock_t job_queue_lock = 0;
 
 void ai_scheduler_submit(ai_job_t* job) {
     if (!job) return;
     job->completed = 0;
     job->next = 0;
     
-    acquire_queue_lock();
+    uint32_t flags = spin_lock_irqsave(&job_queue_lock);
     if (job_queue_tail) {
         job_queue_tail->next = job;
         job_queue_tail = job;
@@ -56,7 +46,7 @@ void ai_scheduler_submit(ai_job_t* job) {
         job_queue_head = job;
         job_queue_tail = job;
     }
-    release_queue_lock();
+    spin_unlock_irqrestore(&job_queue_lock, flags);
 }
 
 void ai_scheduler_wait(ai_job_t* job) {
@@ -67,13 +57,12 @@ void ai_scheduler_wait(ai_job_t* job) {
     }
 }
 
-#if 0
 static void ai_worker_loop(void* arg) {
     (void)arg;
     while (ai_scheduler_running) {
         ai_job_t* job = 0;
         
-        acquire_queue_lock();
+        uint32_t flags = spin_lock_irqsave(&job_queue_lock);
         if (job_queue_head) {
             job = job_queue_head;
             job_queue_head = job->next;
@@ -81,7 +70,7 @@ static void ai_worker_loop(void* arg) {
                 job_queue_tail = 0;
             }
         }
-        release_queue_lock();
+        spin_unlock_irqrestore(&job_queue_lock, flags);
         
         if (job) {
             if (job->func) {
@@ -89,14 +78,10 @@ static void ai_worker_loop(void* arg) {
             }
             job->completed = 1;
         } else {
-            // No work, yield or pause
             asm volatile("pause");
-            // In a real kernel, we would sleep/yield here
-            // sched_yield(); 
         }
     }
 }
-#endif
 
 void ai_scheduler_init(uint32_t n_workers) {
     ai_scheduler_running = 1;

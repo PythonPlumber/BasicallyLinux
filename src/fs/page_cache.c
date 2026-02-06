@@ -1,7 +1,7 @@
-#include "page_cache.h"
-#include "heap.h"
-#include "kswapd.h"
-#include "timer.h"
+#include "fs/page_cache.h"
+#include "mem/heap.h"
+#include "mem/kswapd.h"
+#include "arch/x86/timer.h"
 #include "types.h"
 #include "util.h"
 
