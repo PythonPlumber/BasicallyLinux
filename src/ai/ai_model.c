@@ -14,8 +14,13 @@
 #include "smp_rally.h"
 #include "sched.h"
 
+#ifndef NO_AI_MODEL
 extern uint8_t _ai_model_start;
 extern uint8_t _ai_model_end;
+#else
+static uint8_t _ai_model_start = 0;
+static uint8_t _ai_model_end = 0;
+#endif
 
 static uint8_t* ai_mapped_base = 0;
 static uint32_t ai_mapped_size = 0;
