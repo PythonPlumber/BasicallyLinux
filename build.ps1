@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("all", "clean")]
+    [ValidateSet("all", "clean", "iso")]
     [string]$Target = "all",
     [string]$ModelBlob
 )
@@ -10,6 +10,15 @@ function Require-Command([string]$Name) {
     if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
         throw "$Name not found in PATH"
     }
+}
+
+function Find-FirstCommand([string[]]$Names) {
+    foreach ($name in $Names) {
+        if (Get-Command $name -ErrorAction SilentlyContinue) {
+            return $name
+        }
+    }
+    throw ("None of the following commands were found in PATH: " + ($Names -join ", "))
 }
 
 function Invoke-Checked([string]$Exe, [string[]]$Args) {
@@ -41,6 +50,17 @@ $kernelBin = Join-Path $root "kernel.bin"
 $ldScript = Join-Path $root "linker.ld"
 $assetsDir = Join-Path $root "assets"
 
+$modelBlobPath = $ModelBlob
+if ([string]::IsNullOrEmpty($modelBlobPath)) {
+    $candidateA = Join-Path $assetsDir "smollm-135m.gguf"
+    $candidateB = Join-Path $assetsDir "SmolLM2-135M-Instruct-Q4_K_M.gguf"
+    if (Test-Path $candidateA) {
+        $modelBlobPath = $candidateA
+    } elseif (Test-Path $candidateB) {
+        $modelBlobPath = $candidateB
+    }
+}
+
 if ($Target -eq "clean") {
     if (Test-Path $buildDir) {
         Remove-Item -Recurse -Force $buildDir
@@ -51,9 +71,9 @@ if ($Target -eq "clean") {
     exit 0
 }
 
-Require-Command "i686-elf-gcc"
+$cc = Find-FirstCommand @("i686-elf-gcc", "i686-linux-gnu-gcc")
+$objcopy = Find-FirstCommand @("i686-elf-objcopy", "i686-linux-gnu-objcopy")
 Require-Command "nasm"
-Require-Command "i686-elf-objcopy"
 
 if (-not (Test-Path $ldScript)) {
     throw "linker.ld not found"
@@ -69,7 +89,10 @@ $cSrcs = Get-ChildItem -Path $srcDir -Recurse -Filter "*.c"
 $objPaths = @()
 
 $asFlags = @("-f", "elf32")
-$cFlags = @("-ffreestanding", "-O2", "-Wall", "-Wextra", "-m32", "-fno-pie", "-fno-stack-protector", "-nostdlib", "-nostdinc", "-Iinclude")
+$cFlags = @("-ffreestanding", "-O2", "-Wall", "-Wextra", "-m32", "-fno-pie", "-fno-PIC", "-fno-stack-protector", "-nostdlib", "-nostdinc", "-msse", "-msse2", "-Iinclude")
+if ([string]::IsNullOrEmpty($modelBlobPath)) {
+    $cFlags += "-DNO_AI_MODEL"
+}
 
 foreach ($src in $asmSrcs) {
     $obj = Get-ObjPath $src.FullName $srcDir $buildDir
@@ -87,19 +110,8 @@ foreach ($src in $cSrcs) {
     if (-not (Test-Path $objDir)) {
         New-Item -ItemType Directory -Force -Path $objDir | Out-Null
     }
-    Invoke-Checked "i686-elf-gcc" ($cFlags + @("-c", $src.FullName, "-o", $obj))
+    Invoke-Checked $cc ($cFlags + @("-c", $src.FullName, "-o", $obj))
     $objPaths += $obj
-}
-
-$modelBlobPath = $ModelBlob
-if ([string]::IsNullOrEmpty($modelBlobPath)) {
-    $candidateA = Join-Path $assetsDir "smollm-135m.gguf"
-    $candidateB = Join-Path $assetsDir "SmolLM2-135M-Instruct-Q4_K_M.gguf"
-    if (Test-Path $candidateA) {
-        $modelBlobPath = $candidateA
-    } elseif (Test-Path $candidateB) {
-        $modelBlobPath = $candidateB
-    }
 }
 
 if (-not [string]::IsNullOrEmpty($modelBlobPath)) {
@@ -107,7 +119,7 @@ if (-not [string]::IsNullOrEmpty($modelBlobPath)) {
         throw "Model blob not found: $modelBlobPath"
     }
     $modelObj = Join-Path $buildDir "model.o"
-    Invoke-Checked "i686-elf-objcopy" @(
+    Invoke-Checked $objcopy @(
         "-I", "binary",
         "-O", "elf32-i386",
         "-B", "i386",
@@ -118,5 +130,38 @@ if (-not [string]::IsNullOrEmpty($modelBlobPath)) {
     $objPaths += $modelObj
 }
 
-$ldFlags = @("-T", $ldScript, "-ffreestanding", "-O2", "-nostdlib", "-Wl,--build-id=none")
-Invoke-Checked "i686-elf-gcc" ($ldFlags + @("-o", $kernelBin) + $objPaths)
+$ldFlags = @("-T", $ldScript, "-ffreestanding", "-O2", "-nostdlib", "-m32", "-no-pie", "-Wl,-z,noexecstack", "-Wl,--build-id=none")
+Invoke-Checked $cc ($ldFlags + @("-o", $kernelBin) + $objPaths)
+
+if ($Target -eq "iso") {
+    $isoRoot = Join-Path $buildDir "isodir"
+    $isoBoot = Join-Path $isoRoot "boot"
+    $isoGrub = Join-Path $isoBoot "grub"
+    $grubCfg = Join-Path $isoGrub "grub.cfg"
+    $isoPath = Join-Path $buildDir "basicallylinux.iso"
+
+    Require-Command "grub-mkrescue"
+    Require-Command "xorriso"
+
+    New-Item -ItemType Directory -Force -Path $isoGrub | Out-Null
+    Copy-Item -Force $kernelBin (Join-Path $isoBoot "kernel.bin")
+    if (-not [string]::IsNullOrEmpty($modelBlobPath)) {
+        Copy-Item -Force $modelBlobPath (Join-Path $isoBoot ([System.IO.Path]::GetFileName($modelBlobPath)))
+    }
+
+    $lines = @(
+        "set timeout=5",
+        "set default=0",
+        "menuentry `"BasicallyLinux`" {",
+        "    multiboot /boot/kernel.bin"
+    )
+    if (-not [string]::IsNullOrEmpty($modelBlobPath)) {
+        $modelName = [System.IO.Path]::GetFileName($modelBlobPath)
+        $lines += "    module /boot/$modelName `"ai_model`""
+    }
+    $lines += "    boot"
+    $lines += "}"
+    Set-Content -Path $grubCfg -Value $lines -Encoding ASCII
+
+    Invoke-Checked "grub-mkrescue" @("-o", $isoPath, $isoRoot)
+}
