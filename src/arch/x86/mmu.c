@@ -139,7 +139,7 @@ void mmu_init(void) {
         }
     }
 
-    paging_switch_directory((uintptr_t)page_directory);
+    mmu_switch_space((uintptr_t)page_directory);
     
     mmu_enable_pse();
     mmu_enable_paging();
@@ -171,6 +171,16 @@ void mmu_map_page_dir(uintptr_t* dir, uintptr_t virt, uintptr_t phys, uint32_t f
 
 void mmu_map_page(uintptr_t virt, uintptr_t phys, uint32_t flags) {
     mmu_map_page_dir((uintptr_t*)page_directory, virt, phys, flags);
+}
+
+void mmu_map_page_4mb(uintptr_t virt, uintptr_t phys, uint32_t flags) {
+    uint32_t irq_flags = spin_lock_irqsave(&paging_lock);
+    uintptr_t aligned_virt = virt & 0xFFC00000;
+    uintptr_t aligned_phys = phys & 0xFFC00000;
+    uint32_t pd_index = aligned_virt >> 22;
+    page_directory[pd_index] = aligned_phys | flags | PAGE_PRESENT | PAGE_PS;
+    mmu_tlb_flush(aligned_virt);
+    spin_unlock_irqrestore(&paging_lock, irq_flags);
 }
 
 void mmu_unmap_page_dir(uintptr_t* dir, uintptr_t virt) {

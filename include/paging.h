@@ -19,6 +19,7 @@ int paging_clone_cow_range(uint32_t* parent, uint32_t* child, uint32_t start, ui
 static inline void paging_init(void) { mmu_init(); vmm_init(); }
 static inline void map_page(uint32_t virtual_addr, uint32_t physical_addr, uint32_t flags) { mmu_map_page(virtual_addr, physical_addr, flags); }
 static inline void map_page_dir(uint32_t* dir, uint32_t virtual_addr, uint32_t physical_addr, uint32_t flags) { mmu_map_page_dir((uintptr_t*)dir, virtual_addr, physical_addr, flags); }
+static inline void map_page_4mb(uint32_t virtual_addr, uint32_t physical_addr, uint32_t flags) { mmu_map_page_4mb(virtual_addr, physical_addr, flags); }
 static inline void vmm_map_page(uint32_t virtual_addr, uint32_t physical_addr, uint32_t flags) { mmu_map_page(virtual_addr, physical_addr, flags); }
 static inline void vmm_unmap_page(uint32_t virtual_addr) { mmu_unmap_page(virtual_addr); }
 static inline void unmap_page_dir(uint32_t* dir, uint32_t virtual_addr) { mmu_unmap_page_dir((uintptr_t*)dir, virtual_addr); }

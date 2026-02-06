@@ -57,7 +57,7 @@ void ai_scheduler_wait(ai_job_t* job) {
     }
 }
 
-static void ai_worker_loop(void* arg) {
+static void __attribute__((unused)) ai_worker_loop(void* arg) {
     (void)arg;
     while (ai_scheduler_running) {
         ai_job_t* job = 0;

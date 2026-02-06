@@ -20,6 +20,7 @@ void mmu_init(void);
 // Map a page
 void mmu_map_page(uintptr_t virt, uintptr_t phys, uint32_t flags);
 void mmu_map_page_dir(uintptr_t* dir, uintptr_t virt, uintptr_t phys, uint32_t flags);
+void mmu_map_page_4mb(uintptr_t virt, uintptr_t phys, uint32_t flags);
 
 // Unmap a page
 void mmu_unmap_page(uintptr_t virt);

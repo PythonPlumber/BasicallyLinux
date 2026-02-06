@@ -42,7 +42,6 @@ static inline void tlb_flush(uintptr_t addr) { mmu_tlb_flush(addr); }
 static inline void tlb_flush_all(void) { mmu_tlb_flush_all(); }
 
 // Paging control
-static inline void paging_switch_directory(uintptr_t dir_phys) { mmu_switch_space(dir_phys); }
 
 // Halt the CPU
 void cpu_halt(void);
