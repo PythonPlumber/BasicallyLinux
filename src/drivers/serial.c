@@ -79,3 +79,9 @@ void serial_write_hex64(uint64_t value) {
     buf[18] = 0;
     serial_write(buf);
 }
+
+void serial_write_label_hex(const char* label, uint32_t value) {
+    serial_write(label);
+    serial_write_hex32(value);
+    serial_write("\n");
+}

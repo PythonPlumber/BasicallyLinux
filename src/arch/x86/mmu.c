@@ -7,6 +7,7 @@
 #include "util.h"
 #include "drivers/serial.h"
 #include "arch/x86/hw_detect.h"
+#include "kernel.h"
 
 #define PAGE_PRESENT 0x1
 #define PAGE_RW 0x2
