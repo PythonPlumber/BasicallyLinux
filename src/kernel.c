@@ -52,6 +52,9 @@
 #include "fs/fs_types.h"
 #include "vfs.h"
 #include "drivers/vga.h"
+#include "arch/x86/multiboot.h"
+#include "cpu/apex_intc.h"
+#include "cpu/msgi.h"
 
 extern uint32_t kernel_start;
 extern uint32_t kernel_end;
