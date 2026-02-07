@@ -37,7 +37,7 @@ void smp_ap_entry(void) {
     uint32_t cpu_id = (*(volatile uint32_t*)(LAPIC_BASE + LAPIC_ID)) >> 24;
     
     // Load page directory
-    mmu_switch_space((uintptr_t)mmu_get_current_space());
+    mmu_switch_space((uintptr_t)mmu_get_kernel_space());
     
     // Enable PSE first for 4MB pages
     mmu_enable_pse();

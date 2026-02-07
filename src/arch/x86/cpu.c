@@ -6,6 +6,7 @@
 #include "cpu/syscall.h"
 #include "arch/x86/mmu.h"
 #include "arch/x86/timer.h"
+#include "paging.h"
 
 void arch_init(void) {
     gdt_init();

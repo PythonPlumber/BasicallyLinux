@@ -31,6 +31,7 @@ void mmu_switch_space(uintptr_t space_phys);
 
 // Get current address space
 uintptr_t* mmu_get_current_space(void);
+uintptr_t* mmu_get_kernel_space(void);
 
 // Get physical address from virtual
 uintptr_t mmu_get_phys(uintptr_t virt);

@@ -13,7 +13,7 @@ static uint32_t acpi_rsdt_phys = 0;
 static uint32_t acpi_rsdt_count = 0;
 
 // x86 PCI Config Space access
-static uint32_t pci_config_read(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset) {
+uint32_t pci_config_read(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset) {
     uint32_t address = (uint32_t)(0x80000000u | ((uint32_t)bus << 16)
         | ((uint32_t)slot << 11) | ((uint32_t)func << 8) | (offset & 0xFC));
     outl(0xCF8, address);

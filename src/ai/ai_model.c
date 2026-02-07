@@ -13,6 +13,7 @@
 #include "drivers/vga.h"
 #include "arch/x86/smp_rally.h"
 #include "kernel/sched.h"
+#include "cpu.h"
 
 #ifndef NO_AI_MODEL
 extern uint8_t _ai_model_start;
@@ -606,14 +607,34 @@ static q16_16_t ai_dot_q16_simd(const q16_16_t* a, const q16_16_t* b, uint32_t n
         bpack[2] = b[(p + 2) * n + col];
         bpack[3] = b[(p + 3) * n + col];
         asm volatile(
-            "movdqu (%1), %%xmm0\n"
-            "movdqu (%2), %%xmm1\n"
-            "pmulld %%xmm1, %%xmm0\n"
-            "psrad $16, %%xmm0\n"
-            "movdqu %%xmm0, (%0)\n"
+            "movdqu (%1), %%xmm0\n"    // a0, a1, a2, a3
+            "movdqu (%2), %%xmm1\n"    // b0, b1, b2, b3
+            
+            // First pair (indices 0 and 2)
+            "movdqa %%xmm0, %%xmm2\n"
+            "pmuldq %%xmm1, %%xmm2\n"  // xmm2 = [a2*b2 (64), a0*b0 (64)]
+            "psrlq $16, %%xmm2\n"      // shift each 64-bit result
+            
+            // Second pair (indices 1 and 3)
+            "pshufd $0xF5, %%xmm0, %%xmm0\n" // [a3, a3, a1, a1]
+            "pshufd $0xF5, %%xmm1, %%xmm1\n" // [b3, b3, b1, b1]
+            "pmuldq %%xmm1, %%xmm0\n"  // xmm0 = [a3*b3 (64), a1*b1 (64)]
+            "psrlq $16, %%xmm0\n"
+            
+            // Extract low 32 bits of results into temp
+            "movd %%xmm2, %%eax\n"
+            "movl %%eax, (%0)\n"       // temp[0] = a0*b0 >> 16
+            "pshufd $0xEE, %%xmm2, %%xmm2\n"
+            "movd %%xmm2, %%eax\n"
+            "movl %%eax, 4(%0)\n"      // temp[1] = a2*b2 >> 16
+            "movd %%xmm0, %%eax\n"
+            "movl %%eax, 8(%0)\n"      // temp[2] = a1*b1 >> 16
+            "pshufd $0xEE, %%xmm0, %%xmm0\n"
+            "movd %%xmm0, %%eax\n"
+            "movl %%eax, 12(%0)\n"     // temp[3] = a3*b3 >> 16
             :
             : "r"(temp), "r"(a + p), "r"(bpack)
-            : "xmm0", "xmm1", "memory"
+            : "xmm0", "xmm1", "xmm2", "memory", "eax"
         );
         sum = q16_add(sum, (q16_16_t)temp[0]);
         sum = q16_add(sum, (q16_16_t)temp[1]);
@@ -819,6 +840,15 @@ void ai_model_init(void) {
         serial_write_string("DEBUG: GGUF BAD\n");
         diag_log(DIAG_ERROR, "gguf header invalid");
     }
+
+    if (cpu_has_feature(CPU_FEATURE_SSE41)) {
+        cpu_enable_feature(CPU_FEATURE_SSE);
+        simd_enabled = 1;
+        diag_log(DIAG_INFO, "AI SIMD acceleration enabled (SSE4.1)");
+    } else {
+        diag_log(DIAG_INFO, "AI SIMD acceleration disabled (SSE4.1 not found)");
+    }
+
     serial_write_string("DEBUG: ai_model_init finished\n");
 }
 

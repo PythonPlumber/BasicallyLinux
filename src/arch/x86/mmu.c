@@ -112,28 +112,22 @@ void mmu_init(void) {
     // Identity map ACPI tables
     uint32_t rsdt = hw_acpi_get_rsdt_addr();
     if (rsdt) {
-        // Map RSDT header and its entries
-        mmu_map_page_dir((uintptr_t*)page_directory, rsdt, rsdt, PAGE_PRESENT | PAGE_RW);
+        acpi_sdt_header_t* rsdt_hdr = (acpi_sdt_header_t*)rsdt;
+        // Map all pages covered by RSDT
+        for (uint32_t p = rsdt & ~0xFFF; p < rsdt + rsdt_hdr->length; p += 4096) {
+            mmu_map_page_dir((uintptr_t*)page_directory, p, p, PAGE_PRESENT | PAGE_RW);
+        }
         
         uint32_t count = hw_acpi_get_rsdt_entries();
         if (count > 256) count = 256; // Sanity check
         
-        uint32_t entries_ptr = rsdt + sizeof(acpi_sdt_header_t);
-        // Map the page containing the entry pointers
-        mmu_map_page_dir((uintptr_t*)page_directory, entries_ptr, entries_ptr, PAGE_PRESENT | PAGE_RW);
-
         for (uint32_t i = 0; i < count; i++) {
             uint32_t entry = hw_acpi_get_rsdt_entry(i);
             if (entry) {
-                // Map the table header (usually enough to read signature/length)
-                mmu_map_page_dir((uintptr_t*)page_directory, entry, entry, PAGE_PRESENT | PAGE_RW);
-                
-                // If the table is larger than one page, map subsequent pages based on length
                 acpi_sdt_header_t* hdr = (acpi_sdt_header_t*)entry;
-                if (hdr->length > 4096) {
-                    for (uint32_t j = 4096; j < hdr->length; j += 4096) {
-                        mmu_map_page_dir((uintptr_t*)page_directory, entry + j, entry + j, PAGE_PRESENT | PAGE_RW);
-                    }
+                // Map all pages covered by this table
+                for (uint32_t p = entry & ~0xFFF; p < entry + hdr->length; p += 4096) {
+                    mmu_map_page_dir((uintptr_t*)page_directory, p, p, PAGE_PRESENT | PAGE_RW);
                 }
             }
         }
@@ -227,6 +221,10 @@ uintptr_t* mmu_get_current_space(void) {
     uintptr_t cr3;
     asm volatile("mov %%cr3, %0" : "=r"(cr3));
     return (uintptr_t*)cr3;
+}
+
+uintptr_t* mmu_get_kernel_space(void) {
+    return (uintptr_t*)page_directory;
 }
 
 uintptr_t mmu_get_phys_dir(uintptr_t* dir, uintptr_t virt) {
