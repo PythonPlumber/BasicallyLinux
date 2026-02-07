@@ -19,6 +19,8 @@ static uint32_t align_up(uint32_t value, uint32_t align) {
     return (value + align - 1) & ~(align - 1);
 }
 
+void* kmalloc_aligned(uint32_t size, uint32_t align);
+
 void heap_init(void) {
     uint32_t base = align_up((uint32_t)heap_area, 16);
     heap_head = (heap_block_t*)base;

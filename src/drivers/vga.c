@@ -2,6 +2,7 @@
 #include "types.h"
 #include "drivers/vga.h"
 #include "drivers/serial.h"
+#include "arch/x86/ports.h"
 #include "cpu.h"
 #include "arch/x86/timer.h"
 

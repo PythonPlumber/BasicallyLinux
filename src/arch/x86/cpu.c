@@ -3,6 +3,7 @@
 #include "arch/x86/gdt.h"
 #include "arch/x86/idt.h"
 #include "arch/x86/interrupts.h"
+#include "arch/x86/ports.h"
 #include "cpu/syscall.h"
 #include "arch/x86/mmu.h"
 #include "arch/x86/timer.h"
