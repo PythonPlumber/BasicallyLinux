@@ -1,6 +1,7 @@
 #include "types.h"
 #include "drivers/keyboard.h"
 #include "arch/x86/interrupts.h"
+#include "arch/x86/ports.h"
 
 #define KEYBOARD_BUFFER_SIZE 128
 

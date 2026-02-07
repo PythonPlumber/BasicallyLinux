@@ -63,7 +63,7 @@ static uint32_t align_up(uint32_t value, uint32_t align) {
     return (value + align - 1) & ~(align - 1);
 }
 
-static uint32_t align_down(uint32_t value, uint32_t align) {
+static uint32_t __attribute__((unused)) align_down(uint32_t value, uint32_t align) {
     return value & ~(align - 1);
 }
 

@@ -8,6 +8,7 @@
 #include "mem/vm_space.h"
 #include "mem/heap.h"
 #include "util.h"
+#include "drivers/serial.h"
 #include "user/elf_loader.h"
 #include "cpu.h"
 
@@ -36,6 +37,8 @@ static process_t* current_process[MAX_CPUS];
 
 static uint32_t default_priority = 10;
 static uint32_t default_time_slice = 4;
+
+static process_t* scheduler_pick_best_ready(void);
 
 process_t* scheduler_current(void) {
     return current_process[cpu_get_id()];
